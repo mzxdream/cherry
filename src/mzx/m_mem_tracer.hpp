@@ -54,7 +54,6 @@ struct MMemTracerInfo
 
 class MMemTracerExit;
 
-
 class MMemTracer
 {
 private:
@@ -111,7 +110,7 @@ MMemTracerExit MMemTracer::exit_;
 
 inline void* operator new(size_t size, const char *file, MI64 line)
 {
-    std::cout << "new(size_t size, const char *file, MI64 line)" << std::endl;
+//    std::cout << "new(size_t size, const char *file, MI64 line)" << std::endl;
     void *memory = ::malloc(size);
     if (memory)
     {
@@ -122,7 +121,7 @@ inline void* operator new(size_t size, const char *file, MI64 line)
 
 inline void operator delete(void *memory, const char *file, MI64 line)
 {
-    std::cout << "delete(void *memory, const char *file, MI64 line)" << std::endl;
+//    std::cout << "delete(void *memory, const char *file, MI64 line)" << std::endl;
     if (memory)
     {
         MMemTracer::Remove(memory);
@@ -132,7 +131,7 @@ inline void operator delete(void *memory, const char *file, MI64 line)
 
 inline void* operator new(size_t size)
 {
-    std::cout << "new(size_t size)" << std::endl;
+//    std::cout << "new(size_t size)" << std::endl;
     void *memory = ::malloc(size);
     if (memory)
     {
@@ -143,7 +142,7 @@ inline void* operator new(size_t size)
 
 inline void operator delete(void *memory)
 {
-    std::cout << "delete(void *memory)" << std::endl;
+//    std::cout << "delete(void *memory)" << std::endl;
     if (memory)
     {
         MMemTracer::Remove(memory);
@@ -153,7 +152,7 @@ inline void operator delete(void *memory)
 
 inline void* operator new[](size_t size, const char *file, MI64 line)
 {
-    std::cout << "new[](size_t size, const char *file, MI64 line)" << std::endl;
+//    std::cout << "new[](size_t size, const char *file, MI64 line)" << std::endl;
     void *memory = ::malloc(size);
     if (memory)
     {
@@ -164,7 +163,7 @@ inline void* operator new[](size_t size, const char *file, MI64 line)
 
 inline void operator delete[](void *memory, const char *file, MI64 line)
 {
-    std::cout << "delete[](void *memory, const char *file, MI64 line)" << std::endl;
+//    std::cout << "delete[](void *memory, const char *file, MI64 line)" << std::endl;
     if (memory)
     {
         MMemTracer::Remove(memory);
@@ -174,7 +173,7 @@ inline void operator delete[](void *memory, const char *file, MI64 line)
 
 inline void* operator new[](size_t size)
 {
-    std::cout << "new[](size_t size)" << std::endl;
+//    std::cout << "new[](size_t size)" << std::endl;
     void *memory = ::malloc(size);
     if (memory)
     {
@@ -185,7 +184,7 @@ inline void* operator new[](size_t size)
 
 inline void operator delete[](void *memory)
 {
-    std::cout << "delete[](void *memory)" << std::endl;
+//    std::cout << "delete[](void *memory)" << std::endl;
     if (memory)
     {
         MMemTracer::Remove(memory);
@@ -195,7 +194,6 @@ inline void operator delete[](void *memory)
 
 inline void* _malloc(size_t size, const char *file, MI64 line)
 {
-    std::cout << __func__;
     void *memory = ::malloc(size);
     if (memory)
     {
@@ -203,29 +201,27 @@ inline void* _malloc(size_t size, const char *file, MI64 line)
     }
     return memory;
 }
-#if 0
-inline void* _calloc(size_t n, size_t size, const std::string &file, MI64 line)
+
+inline void* _calloc(size_t n, size_t size, const char *file, MI64 line)
 {
-    std::cout << __func__;
     void *memory = ::calloc(n, size);
     if (memory)
     {
-        MMemTracer::Instance().Add(memory, file, line);
+        MMemTracer::Add(memory, file, line, size);
     }
     return memory;
 }
 
-inline void* _realloc(void *memory, size_t size, const std::string &file, MI64 line)
+inline void* _realloc(void *memory, size_t size, const char *file, MI64 line)
 {
-    std::cout << __func__;
     if (memory)
     {
-        MMemTracer::Instance().Remove(memory);
+        MMemTracer::Remove(memory);
     }
     memory = ::realloc(memory, size);
     if (memory)
     {
-        MMemTracer::Instance().Add(memory, file, line);
+        MMemTracer::Add(memory, file, line, size);
     }
     return memory;
 }
@@ -234,15 +230,15 @@ inline void _free(void *memory)
 {
     if (memory)
     {
-        MMemTracer::Instance().Remove(memory);
+        MMemTracer::Remove(memory);
         ::free(memory);
     }
 }
-#endif
+
 #define new            new(__FILE__, __LINE__)
 #define malloc(s)      _malloc(s, __FILE__, __LINE__)
-//#define calloc(n, s)   _calloc(n, s, __FILE__, __LINE__)
-//#define realloc(p, s)  _realloc(p, s, __FILE__, __LINE__)
-//#define free(p)        _free(p)
+#define calloc(n, s)   _calloc(n, s, __FILE__, __LINE__)
+#define realloc(p, s)  _realloc(p, s, __FILE__, __LINE__)
+#define free(p)        _free(p)
 
 #endif 
