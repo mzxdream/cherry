@@ -55,21 +55,21 @@ protected:
     virtual void OnAfterThreadLoop(){}
     virtual void ThreadRun() = 0;
 private:
-    static void* ThreadMain(void *param)
+    static void* ThreadMain(void *p_param)
     {
-        MThread *th = static_cast<MThread*>(param);
-        if (th)
+        MThread *p_th = static_cast<MThread*>(p_param);
+        if (p_th)
         {
-            th->OnBeforeThreadRun();
-            th->thread_status_ = ThreadStatusRunning;
-            while (th->thread_run_)
+            p_th->OnBeforeThreadRun();
+            p_th->thread_status_ = ThreadStatusRunning;
+            while (p_th->thread_run_)
             {
-                th->OnBeforeThreadLoop();
-                th->ThreadRun();
-                th->OnAfterThreadLoop();
+                p_th->OnBeforeThreadLoop();
+                p_th->ThreadRun();
+                p_th->OnAfterThreadLoop();
             }
-            th->thread_status_ = ThreadStatusDead;
-            th->OnAfterThreadRun();
+            p_th->thread_status_ = ThreadStatusDead;
+            p_th->OnAfterThreadRun();
         }
         ::pthread_exit(NULL);
         return NULL;

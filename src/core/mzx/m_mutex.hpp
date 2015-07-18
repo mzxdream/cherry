@@ -55,20 +55,20 @@ template<typename TMutex>
 class MAutoLock
 {
 public:
-    explicit MAutoLock(TMutex &mtx)
-        :mtx_(mtx)
+    explicit MAutoLock(TMutex &r_mtx)
+        :r_mtx_(r_mtx)
     {
-        mtx_.Lock();
+        r_mtx_.Lock();
     }
     ~MAutoLock()
     {
-        mtx_.Unlock();
+        r_mtx_.Unlock();
     }
 private:
     MAutoLock(const MAutoLock &);
     MAutoLock& operator=(const MAutoLock &);
 private:
-    TMutex &mtx_;
+    TMutex &r_mtx_;
 };
 
 #endif

@@ -23,15 +23,15 @@ private:
     {
     public:
         MSingletonBase()
-            :instance_(NULL)
+            :p_instance_(NULL)
         {
         }
         ~MSingletonBase()
         {
-            if (instance_)
+            if (p_instance_)
             {
-                delete instance_;
-                instance_ = NULL;
+                delete p_instance_;
+                p_instance_ = NULL;
             }
         }
     private:
@@ -40,18 +40,18 @@ private:
     public:
         TClass& Instance()
         {
-            if (!instance_)
+            if (!p_instance_)
             {
                 MAutoLock<TMutex> lock(mtx_);
-                if (!instance_)
+                if (!p_instance_)
                 {
-                    instance_ = new TClass();
+                    p_instance_ = new TClass();
                 }
             }
-            return *instance_;
+            return *p_instance_;
         }
     private:
-        TClass *instance_;
+        TClass *p_instance_;
         TMutex mtx_;
     };
 private:
