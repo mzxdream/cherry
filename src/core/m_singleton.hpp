@@ -8,11 +8,10 @@ template<typename TClass, typename TMutex>
 class MSingleton
 {
 protected:
-    MSingleton(){}
-    ~MSingleton(){}
-private:
-    MSingleton(const MSingleton &);
-    MSingleton& operator=(const MSingleton &);
+    MSingleton() = default;
+    ~MSingleton() = default;
+    MSingleton(const MSingleton &) = delete;
+    MSingleton& operator=(const MSingleton &) = delete;
 public:
     static TClass& Instance()
     {
@@ -23,7 +22,7 @@ private:
     {
     public:
         MSingletonBase()
-            :p_instance_(NULL)
+            :p_instance_(nullptr)
         {
         }
         ~MSingletonBase()
@@ -31,12 +30,11 @@ private:
             if (p_instance_)
             {
                 delete p_instance_;
-                p_instance_ = NULL;
+                p_instance_ = nullptr;
             }
         }
-    private:
-        MSingletonBase(const MSingletonBase &);
-        MSingletonBase& operator=(const MSingleton &);
+        MSingletonBase(const MSingletonBase &) = delete;
+        MSingletonBase& operator=(const MSingleton &) = delete;
     public:
         TClass& Instance()
         {

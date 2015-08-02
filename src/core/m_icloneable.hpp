@@ -4,6 +4,7 @@
 class MICloneable
 {
 public:
+    virtual ~MICloneable() = default;
     virtual MICloneable* Clone() = 0;
 };
 

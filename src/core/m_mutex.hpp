@@ -6,11 +6,10 @@
 class MNoneMutex
 {
 public:
-    MNoneMutex(){}
-    ~MNoneMutex(){}
-private:
-    MNoneMutex(const MNoneMutex &);
-    MNoneMutex& operator=(const MNoneMutex &);
+    MNoneMutex() = default;
+    ~MNoneMutex() = default;
+    MNoneMutex(const MNoneMutex &) = delete;
+    MNoneMutex& operator=(const MNoneMutex &) = delete;
 public:
     void Lock(){}
     void Unlock(){}
@@ -31,9 +30,8 @@ public:
     {
         ::pthread_mutex_destroy(&mtx_);
     }
-private:
-    MMutex(const MMutex &);
-    MMutex& operator=(const MMutex &);
+    MMutex(const MMutex &) = delete;
+    MMutex& operator=(const MMutex &) = delete;
 public:
     void Lock()
     {
@@ -64,9 +62,8 @@ public:
     {
         r_mtx_.Unlock();
     }
-private:
-    MAutoLock(const MAutoLock &);
-    MAutoLock& operator=(const MAutoLock &);
+    MAutoLock(const MAutoLock &) = delete;
+    MAutoLock& operator=(const MAutoLock &) = delete;
 private:
     TMutex &r_mtx_;
 };

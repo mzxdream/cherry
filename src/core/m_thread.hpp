@@ -16,9 +16,8 @@ public:
     {
         Stop();
     }
-private:
-    MThread(const MThread &);
-    MThread& operator=(const MThread &);
+    MThread(const MThread &) = delete;
+    MThread& operator=(const MThread &) = delete;
 public:
     enum ThreadStatus{ThreadStatusInit = 0, ThreadStatusRunnable, ThreadStatusRunning, ThreadStatusSuspend, ThreadStatusDead};
 public:
