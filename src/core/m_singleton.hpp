@@ -2,9 +2,9 @@
 #define _M_SINGLETON_H_
 
 #include <iostream>
-#include "m_mutex.hpp"
+#include <mutex>
 
-template<typename TClass, typename TMutex>
+template<typename TClass, typename TMutex = std::mutex>
 class MSingleton
 {
 protected:
@@ -40,7 +40,7 @@ private:
         {
             if (!p_instance_)
             {
-                MAutoLock<TMutex> lock(mtx_);
+                std::lock_guard<TMutex> lock(mtx_);
                 if (!p_instance_)
                 {
                     p_instance_ = new TClass();

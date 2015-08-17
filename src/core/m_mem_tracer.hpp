@@ -1,7 +1,7 @@
 #ifndef _M_MEM_TRACER_H_
 #define _M_MEM_TRACER_H_
 
-#include "m_mutex.hpp"
+#include <mutex>
 #include <malloc.h>
 #include <map>
 #include <string>
@@ -61,7 +61,7 @@ private:
 public:
     static void Add(void *p_memory, const char *p_file, int line, size_t size)
     {
-        MAutoLock<MMutex> lock(mtx_);
+        std::lock_guard<std::mutex> lock(mtx_);
         MMemTracerInfo info;
         info.p_file = p_file;
         info.line = line;
@@ -70,7 +70,7 @@ public:
     }
     static void Remove(void *p_memory)
     {
-        MAutoLock<MMutex> lock(mtx_);
+        std::lock_guard<std::mutex> lock(mtx_);
         std::map<void*, MMemTracerInfo, std::less<void*>, MMemTracerAllocator<std::pair<const char *, MMemTracerInfo> > >::iterator it 
             = memory_map_.find(p_memory);
         if (it != memory_map_.end())
@@ -90,7 +90,7 @@ public:
     }
 private:
     static std::map<void*, MMemTracerInfo, std::less<void*>, MMemTracerAllocator<std::pair<const char *, MMemTracerInfo> > > memory_map_;
-    static MMutex mtx_;
+    static std::mutex mtx_;
     static MMemTracerExit exit_;
 };
 
@@ -104,7 +104,7 @@ public:
 };
 
 std::map<void*, MMemTracerInfo, std::less<void*>, MMemTracerAllocator<std::pair<const char *, MMemTracerInfo> > > MMemTracer::memory_map_;
-MMutex MMemTracer::mtx_;
+std::mutex MMemTracer::mtx_;
 MMemTracerExit MMemTracer::exit_;
 
 inline void* operator new(size_t size, const char *p_file, int line)
