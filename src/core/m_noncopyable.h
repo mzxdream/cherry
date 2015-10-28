@@ -1,5 +1,5 @@
-#ifndef _M_NONCOPYABLE_HPP_
-#define _M_NONCOPYABLE_HPP_
+#ifndef _M_NONCOPYABLE_H_
+#define _M_NONCOPYABLE_H_
 
 class MNoncopyable
 {

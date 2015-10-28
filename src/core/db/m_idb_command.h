@@ -1,5 +1,5 @@
-#ifndef _M_DB_COMMAND_HPP_
-#define _M_DB_COMMAND_HPP_
+#ifndef _M_DB_COMMAND_H_
+#define _M_DB_COMMAND_H_
 
 #include "m_idb_connection.hpp"
 

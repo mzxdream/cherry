@@ -1,5 +1,5 @@
-#ifndef _M_ICLONEABLE_HPP_
-#define _M_ICLONEABLE_HPP_
+#ifndef _M_ICLONEABLE_H_
+#define _M_ICLONEABLE_H_
 
 class MICloneable
 {
