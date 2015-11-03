@@ -27,27 +27,64 @@ public:
     MIDbConnection(const MIDbConnection &) = delete;
     MIDbConnection& operator=(const MIDbConnection &) = delete;
 public:
-    virtual DbConnParamStyleType GetParamStyleType() = 0;
-    virtual DbConnThreadSafetyType GetThreadSafetyType() = 0;
-    virtual bool Open(const std::string &conn_string) = 0;
-    virtual void Close() = 0;
-    virtual bool SelectDb(const std::string &db)
+    DbConnParamStyleType GetParamStyleType()
     {
-        return false;
+        return DoGetParamStyleType();
     }
-    virtual bool StartTran()
+    DbConnThreadSafetyType GetThreadSafetyType()
     {
-        return false;
+        return DoGetThreadSafetyType();
     }
-    virtual bool CommitTran()
+    bool Open(const std::string &conn_string)
     {
-        return false;
+        return DoOpen(conn_string);
+    }
+    void Close()
+    {
+        DoClose();
+    }
+    bool SelectDb(const std::string &db)
+    {
+        return DoSelectDb(db);
+    }
+    bool StartTran()
+    {
+        return DoStartTran();
+    }
+    bool CommitTran()
+    {
+        return DoCommitTran();
     }
     virtual bool RollBackTran()
     {
+        return DoRollBackTran();
+    }
+    MIDbCommand* CreateCommand()
+    {
+        return DoCreateCommand();
+    }
+private:
+    virtual DbConnParamStyleType DoGetParamStyleType() = 0;
+    virtual DbConnThreadSafetyType DoGetThreadSafetyType() = 0;
+    virtual bool DoOpen(const std::string &conn_string) = 0;
+    virtual void DoClose() = 0;
+    virtual bool DoSelectDb(const std::string &db)
+    {
         return false;
     }
-    virtual MIDbCommand* CreateCommand() = 0;
+    virtual bool DoStartTran()
+    {
+        return false;
+    }
+    virtual bool DoCommitTran()
+    {
+        return false;
+    }
+    virtual bool DoRollBackTran()
+    {
+        return false;
+    }
+    virtual MIDbCommand* DoCreateCommand() = 0;
 };
 
 #endif
