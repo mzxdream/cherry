@@ -2,23 +2,9 @@
 #define _M_IDB_COMMAND_H_
 
 #include <string>
-#include <stdint.h>
+#include <cherry/util/m_type_define.h>
 
 class MIDbConnection;
-
-class MDbBlob final
-{
-public:
-    explicit MDbBlob(const std::string &data)
-        :data_(data)
-    {
-    }
-    ~MDbBlob() = default;
-    MDbBlob(const MDbBlob &) = default;
-    MDbBlob& operator=(const MDbBlob &) = default;
-private:
-    std::string data_;
-};
 
 class MIDbCommand
 {
@@ -83,7 +69,7 @@ private:
     virtual bool AddParam(const float &param) { return false; }
     virtual bool AddParam(const double &param) { return false; }
     virtual bool AddParam(const std::string &param) { return false; }
-    virtual bool AddParam(const MDbBlob &param) { return false; }
+    virtual bool AddParam(const MBlob &param) { return false; }
 
     virtual bool GetParam(int8_t &param) { return false; }
     virtual bool GetParam(uint8_t &param) { return false; }

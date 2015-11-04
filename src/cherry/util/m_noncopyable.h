@@ -3,6 +3,9 @@
 
 class MNoncopyable
 {
+protected:
+    MNoncopyable() = default;
+    ~MNoncopyable() = default;
 public:
     MNoncopyable(const MNoncopyable &) = delete;
     MNoncopyable& operator=(const MNoncopyable &) = delete;
