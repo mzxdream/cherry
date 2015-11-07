@@ -3,6 +3,7 @@
 
 #include <string>
 #include <cherry/util/m_type_define.h>
+#include <cherry/util/m_log.h>
 
 class MIDbConnection;
 
@@ -26,10 +27,12 @@ public:
     {
         if (!DoBeforeAddParam())
         {
+            MLOG(Error) << "ExecuteNonQuery DoBeforeAddParam failed";
             return -1;
         }
         if (!AddParam(args...))
         {
+            MLOG(Error) << "ExecuteNonQuery AddParam failed";
             return -2;
         }
         return DoExecuteNonQuery();
@@ -39,10 +42,12 @@ public:
     {
         if (!DoBeforeAddParam())
         {
+            MLOG(Error) << "ExecuteReader DoBeforeAddParam failed";
             return false;
         }
         if (!AddParam(args...))
         {
+            MLOG(Error) << "ExecuteReader AddParam failed";
             return false;
         }
         return DoExecuteReader();

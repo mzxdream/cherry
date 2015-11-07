@@ -1,9 +1,9 @@
 #ifndef _M_LOG_H_
 #define _M_LOG_H_
 
-#include <cherry/util/m_type_define.h>
-#include <cherry/util/m_singleton.h>
-#include <mutex>
+#include <string>
+#include <sstream>
+#include <iostream>
 
 enum class MLogLevelType
 {
@@ -13,40 +13,68 @@ enum class MLogLevelType
     Fatal = 3,
 };
 
-typedef void (*MLogHandler) (MLogType type, const char *p_file_name, int line, const std::string &message);
+typedef void MLogHandler(MLogLevelType level, const char *p_file_name, int line, const std::string &message);
+
+void MDefaultLogHandler(MLogLevelType level, const char *p_file_name, int line, const std::string &message)
+{
+    static const char* level_names[] = {"INFO", "WARNING", "ERROR", "FATAL"};
+    std::cerr << "[" << level_names[static_cast<unsigned>(level)] << " " << p_file_name << ":" << line << "] " << message << "\n";
+}
 
 class MLogFinisher;
 
 class MLogMessage final
 {
 public:
-    explicit MLogMessage(MLogLevelType type, const char *p_file_name, int line)
+    explicit MLogMessage(MLogLevelType level, const char *p_file_name, int line)
+        :level_(level)
+        ,p_file_name_(p_file_name)
+        ,line_(line)
     {
-
     }
-    MLogMessage& operator<<(const std::string& value);
-    MLogMessage& operator<<(const char* value);
-    MLogMessage& operator<<(char value);
-    MLogMessage& operator<<(int value);
-    MLogMessage& operator<<(uint value);
-    MLogMessage& operator<<(long value);
-    MLogMessage& operator<<(unsigned long value);
-    MLogMessage& operator<<(long long value);
-    MLogMessage& operator<<(unsigned long long value);
-    MLogMessage& operator<<(double value);
-    MLogMessage& operator<<(void* value);
-    MLogMessage& operator<<(const StringPiece& value);
-    MLogMessage& operator<<(const ::google::protobuf::util::Status& status);
-    MLogMessage& operator<<(const uint128& value);
+public:
+    template<typename T>
+    MLogMessage& operator<<(const T& value)
+    {
+        if (static_cast<unsigned>(level_) >= static_cast<unsigned>(s_listen_level_))
+        {
+            stream_ << value;
+        }
+        return *this;
+    }
+    MLogHandler* SetLogHandler(MLogHandler *p_new_handler)
+    {
+        MLogHandler *p_old_handler = sp_log_handler_;
+        sp_log_handler_ = p_new_handler;
+        return p_old_handler;
+    }
+    MLogLevelType SetLogListenLevel(MLogLevelType new_level)
+    {
+        MLogLevelType old_level = s_listen_level_;
+        s_listen_level_ = new_level;
+        return old_level;
+    }
 private:
     friend class MLogFinisher;
-    void Finish();
+    void Finish() const
+    {
+        if (static_cast<unsigned>(level_) >= static_cast<unsigned>(s_listen_level_)
+            && sp_log_handler_)
+        {
+            sp_log_handler_(level_, p_file_name_, line_, stream_.str());
+        }
+    }
 private:
-    MLogLevelType type_;
+    MLogLevelType level_;
     const char *p_file_name_;
     int line_;
-    std::string message_;
+    std::stringstream stream_;
+    static MLogHandler *sp_log_handler_;
+    static MLogLevelType s_listen_level_;
 };
+
+MLogHandler* MLogMessage::sp_log_handler_ = &MDefaultLogHandler;
+MLogLevelType MLogMessage::s_listen_level_ = MLogLevelType::Warning;
 
 class MLogFinisher final
 {
@@ -56,5 +84,8 @@ public:
         msg.Finish();
     }
 };
+
+#define MLOG(LEVEL) MLogFinisher() = MLogMessage(MLogLevelType::LEVEL, __FILE__, __LINE__)
+#define MLOG_IF(LEVEL, CONDITION) !(CONDITION) ? (void)0 : MLOG(LEVEL)
 
 #endif
