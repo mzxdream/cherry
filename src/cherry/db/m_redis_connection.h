@@ -1,9 +1,9 @@
 #ifndef _M_REDIS_CONNECTION_H_
 #define _M_REDIS_CONNECTION_H_
 
-#include "common/m_idb_connection.h"
-#include "common/m_noncopyable.h"
-#include "3rd/redis/hiredis.h"
+#include <cherry/util/m_idb_connection.h>
+#include <cherry/3rd/redis/hiredis.h>
+#include <string>
 
 class MRedisConnection
     :public MIDbConnection
@@ -11,6 +11,8 @@ class MRedisConnection
 public:
     MRedisConnection();
     virtual ~MRedisConnection();
+public:
+    redisContext* GetConnection();
 private:
     virtual DbConnParamStyleType DoGetParamStyleType() override;
     virtual DbConnThreadSafetyType DoGetThreadSafetyType() override;
