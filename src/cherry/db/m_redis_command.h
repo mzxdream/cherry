@@ -15,6 +15,16 @@ public:
     explicit MRedisCommand(MRedisConnection &conn);
     virtual ~MRedisCommand();
 private:
+    template<typename T>
+    bool AddBaseTypeParam(const T &param)
+    {
+        std::string str;
+        str.resize(sizeof(param));
+        *(static_cast<T*>(const_cast<char*>(str.c_str()))) = param;
+        args_.push_back(param);
+        return true;
+    }
+private:
     virtual bool DoPrepair(const std::string &command) override;
     virtual bool DoBeforeAddParam() override;
     virtual int DoExecuteNonQuery() override;
@@ -47,6 +57,10 @@ private:
 private:
     MRedisConnection &conn_;
     std::vector<std::string> args_;
+    redisReply *p_reply_;
+    redisReply **pp_result_;
+    size_t cur_row_;
+    size_t row_count_;
 };
 
 #endif

@@ -117,25 +117,25 @@ bool MRedisConnection::DoOpen(const std::string &conn_string)
         pwd_pos_start += sc_redis_pwd.size();
         size_t pwd_pos_end = conn_string.find_first_of(sc_redis_separator, pwd_pos_start);
         std::string pwd = conn_string.substr(pwd_pos_start, pwd_pos_end-pwd_pos_start);
-        redisReply *pReply = static_cast<redisReply*>(redisCommand(p_redis_, "AUTH %s", pwd));
-        if (!pReply)
+        redisReply *p_reply = static_cast<redisReply*>(redisCommand(p_redis_, "AUTH %s", pwd));
+        if (!p_reply)
         {
             MLOG(Error) << "auth pwd failed reply is null";
             redisFree(p_redis_);
             p_redis_ = nullptr;
             return false;
         }
-        if (pReply->type == REDIS_REPLY_ERROR)
+        if (p_reply->type == REDIS_REPLY_ERROR)
         {
-            MLOG(Error) << "auth pwd failed error:" << pReply->str;
+            MLOG(Error) << "auth pwd failed error:" << p_reply->str;
             redisFree(p_redis_);
             p_redis_ = nullptr;
-            freeReplyObject(pReply);
-            pReply = nullptr;
+            freeReplyObject(p_reply);
+            p_reply = nullptr;
             return false;
         }
-        freeReplyObject(pReply);
-        pReply = nullptr;
+        freeReplyObject(p_reply);
+        p_reply = nullptr;
     }
 
     size_t db_pos_start = conn_string.find_last_of(sc_redis_db);
@@ -144,25 +144,25 @@ bool MRedisConnection::DoOpen(const std::string &conn_string)
         db_pos_start += sc_redis_db.size();
         size_t db_pos_end = conn_string.find_first_of(sc_redis_separator, db_pos_start);
         int db = std::stoi(conn_string.substr(db_pos_start, db_pos_end-db_pos_start));
-        redisReply *pReply = static_cast<redisReply*>(redisCommand(p_redis_, "SELECT %d", db));
-        if (!pReply)
+        redisReply *p_reply = static_cast<redisReply*>(redisCommand(p_redis_, "SELECT %d", db));
+        if (!p_reply)
         {
             MLOG(Error) << "select db failed reply is null";
             redisFree(p_redis_);
             p_redis_ = nullptr;
             return false;
         }
-        if (pReply->type == REDIS_REPLY_ERROR)
+        if (p_reply->type == REDIS_REPLY_ERROR)
         {
-            MLOG(Error) << "select db failed error:" << pReply->str;
+            MLOG(Error) << "select db failed error:" << p_reply->str;
             redisFree(p_redis_);
             p_redis_ = nullptr;
-            freeReplyObject(pReply);
-            pReply = nullptr;
+            freeReplyObject(p_reply);
+            p_reply = nullptr;
             return false;
         }
-        freeReplyObject(pReply);
-        pReply = nullptr;
+        freeReplyObject(p_reply);
+        p_reply = nullptr;
     }
     return true;
 }
@@ -178,21 +178,21 @@ void MRedisConnection::DoClose()
 
 bool MRedisConnection::DoSelectDb(const std::string &db)
 {
-    redisReply *pReply = static_cast<redisReply*>(redisCommand(p_redis_, "SELECT %d", std::stoi(db)));
-    if (!pReply)
+    redisReply *p_reply = static_cast<redisReply*>(redisCommand(p_redis_, "SELECT %d", std::stoi(db)));
+    if (!p_reply)
     {
         MLOG(Error) << "select db failed reply is null";
         return false;
     }
-    if (pReply->type == REDIS_REPLY_ERROR)
+    if (p_reply->type == REDIS_REPLY_ERROR)
     {
-        MLOG(Error) << "select db failed error:" << pReply->str;
-        freeReplyObject(pReply);
-        pReply = nullptr;
+        MLOG(Error) << "select db failed error:" << p_reply->str;
+        freeReplyObject(p_reply);
+        p_reply = nullptr;
         return false;
     }
-    freeReplyObject(pReply);
-    pReply = nullptr;
+    freeReplyObject(p_reply);
+    p_reply = nullptr;
     return true;
 }
 

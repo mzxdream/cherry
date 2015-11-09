@@ -14,6 +14,11 @@ public:
     ~MBlob() = default;
     MBlob(const MBlob &) = default;
     MBlob& operator=(const MBlob &) = default;
+public:
+    const std::string& GetString() const
+    {
+        return data_;
+    }
 private:
     std::string data_;
 };
