@@ -50,11 +50,46 @@ bool MRedisCommand::DoExecuteReader()
     cur_row_ = 0;
     row_count_ = 0;
 
-    std::vector<const char*> args();
-    std::vector<size_t> arglens;
+    std::vector<const char*> args(args_.size());
+    std::vector<size_t> arglens(args_.size());
 
-    p_reply_ = static_cast<redisReply*>(conn_.GetConnection(), );
+    for (size_t i = 0; i < args_.size(); ++i)
+    {
+        args[i] = args_[i].c_str();
+        arglens[i] = args_[i].size();
+    }
 
+    p_reply_ = static_cast<redisReply*>(redisCommandArgv(conn_.GetConnection(), args_.size(), &args[0], &arglens[0]));
+
+    if (!p_reply_)
+    {
+        MLOG(Error) << "DoExecuteReader failed reply is null";
+        return false;
+    }
+    if (p_reply_->type == REDIS_REPLY_ERROR)
+    {
+        MLOG(Error) << "DoExecuteReader failed reply error:" << p_reply_->str;
+        return false;
+    }
+    else if (p_reply_->type == REDIS_REPLY_NIL)
+    {
+        return true;
+    }
+    else if (p_reply_->type == REDIS_REPLY_STATUS)
+    {
+        return strcasecmp(p_reply_->str,"OK") == 0;
+    }
+    else if (p_reply_->type == REDIS_REPLY_INTEGER
+        || p_reply_->type == REDIS_REPLY_STRING)
+    {
+        pp_result_ = &p_reply_;
+        row_count_ = 1;
+    }
+    else if (p_reply_->type == REDIS_REPLY_ARRAY)
+    {
+        pp_result_ = p_reply_->element;
+        row_count_ = p_reply_->elements;
+    }
     return true;
 }
 
@@ -122,55 +157,55 @@ bool MRedisCommand::DoAddParam(const MBlob &param)
 
 bool MRedisCommand::DoGetParam(int8_t &param)
 {
-    return true;
+    return GetBaseTypeParam(param);
 }
 
 bool MRedisCommand::DoGetParam(uint8_t &param)
 {
-    return true;
+    return GetBaseTypeParam(param);
 }
 
 bool MRedisCommand::DoGetParam(int16_t &param)
 {
-    return true;
+    return GetBaseTypeParam(param);
 }
 
 bool MRedisCommand::DoGetParam(uint16_t &param)
 {
-    return true;
+    return GetBaseTypeParam(param);
 }
 
 bool MRedisCommand::DoGetParam(int32_t &param)
 {
-    return true;
+    return GetBaseTypeParam(param);
 }
 
 bool MRedisCommand::DoGetParam(uint32_t &param)
 {
-    return true;
+    return GetBaseTypeParam(param);
 }
 
 bool MRedisCommand::DoGetParam(int64_t &param)
 {
-    return true;
+    return GetBaseTypeParam(param);
 }
 
 bool MRedisCommand::DoGetParam(uint64_t &param)
 {
-    return true;
+    return GetBaseTypeParam(param);
 }
 
 bool MRedisCommand::DoGetParam(float &param)
 {
-    return true;
+    return GetBaseTypeParam(param);
 }
 
 bool MRedisCommand::DoGetParam(double &param)
 {
-    return true;
+    return GetBaseTypeParam(param);
 }
 
 bool MRedisCommand::DoGetParam(std::string &param)
 {
-    return true;
+    return GetBaseTypeParam(param);
 }

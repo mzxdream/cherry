@@ -24,6 +24,37 @@ private:
         args_.push_back(param);
         return true;
     }
+    template<typename T>
+    bool GetBaseTypeParam(T &param)
+    {
+        if (!pp_result_)
+        {
+            return false;
+        }
+        if (cur_row_ >= row_count_)
+        {
+            return false;
+        }
+        redisReply *p_reply = pp_result_[cur_row_];
+        if (!p_reply)
+        {
+            return false;
+        }
+        if (p_reply->type == REDIS_REPLY_INTEGER)
+        {
+            param = static_cast<T>(p_reply->integer);
+        }
+        else if (p_reply->type == REDIS_REPLY_STRING)
+        {
+            param = static_cast<T>(p_reply->str);
+        }
+        else
+        {
+            return false;
+        }
+        ++cur_row_;
+        return true;
+    }
 private:
     virtual bool DoPrepair(const std::string &command) override;
     virtual bool DoBeforeAddParam() override;
