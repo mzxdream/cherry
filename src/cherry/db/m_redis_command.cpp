@@ -77,7 +77,11 @@ bool MRedisCommand::DoExecuteReader()
     }
     else if (p_reply_->type == REDIS_REPLY_STATUS)
     {
-        return strcasecmp(p_reply_->str,"OK") == 0;
+        if (strcasecmp(p_reply_->str,"OK") != 0)
+        {
+            MLOG(Error) << "status is failed";
+            return false;
+        }
     }
     else if (p_reply_->type == REDIS_REPLY_INTEGER
         || p_reply_->type == REDIS_REPLY_STRING)
@@ -207,5 +211,39 @@ bool MRedisCommand::DoGetParam(double &param)
 
 bool MRedisCommand::DoGetParam(std::string &param)
 {
-    return GetBaseTypeParam(param);
+    if (!pp_result_)
+    {
+        MLOG(Error) << "pp_result_ is null";
+        return false;
+    }
+    if (cur_row_ >= row_count_)
+    {
+        MLOG(Error) << "cur row:" << cur_row_ << " is large than row count:" << row_count_;
+        return false;
+    }
+    redisReply *p_reply = pp_result_[cur_row_];
+    if (!p_reply)
+    {
+        MLOG(Error) << "p_reply is null, cur row:" << cur_row_;
+        return false;
+    }
+    if (p_reply->type == REDIS_REPLY_INTEGER)
+    {
+        if (!MConvert::BaseTypeToStr(p_reply->integer, param))
+        {
+            MLOG(Error) << "convert base type to str failed";
+            return false;
+        }
+    }
+    else if (p_reply->type == REDIS_REPLY_STRING)
+    {
+        param = p_reply->str;
+    }
+    else
+    {
+        MLOG(Error) << "type:" << p_reply->type << " can't get param";
+        return false;
+    }
+    ++cur_row_;
+    return true;
 }

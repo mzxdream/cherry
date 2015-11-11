@@ -1,5 +1,6 @@
 #include "m_redis_connection.h"
 #include <cherry/util/m_log.h>
+#include <cherry/util/m_convert.h>
 #include <iostream>
 #include <sys/time.h>
 
@@ -75,7 +76,12 @@ bool MRedisConnection::DoOpen(const std::string &conn_string)
         MLOG(Error) << "can't get port info end";
         return false;
     }
-    int port = std::stoi(conn_string.substr(port_pos_start, port_pos_end-port_pos_start));
+    int port = 0;
+    if (!MConvert::StrToBaseType(conn_string.substr(port_pos_start, port_pos_end-port_pos_start), port))
+    {
+        MLOG(Error) << "can't convert port";
+        return false;
+    }
 
     size_t timeout_pos_start = conn_string.find_last_of(sc_redis_timeout);
     if (timeout_pos_start == std::npos)
@@ -91,7 +97,12 @@ bool MRedisConnection::DoOpen(const std::string &conn_string)
             MLOG(Error) << "can't get timeout end";
             return false;
         }
-        time_t timeout = std::stol(conn_string.substr(timeout_pos_start, timeout_pos_end-timeout_pos_start));
+        time_t timeout = 0;
+        if (!MConvert::StrToBaseType(conn_string.substr(timeout_pos_start, timeout_pos_end-timeout_pos_start), timeout))
+        {
+            MLOG(Error) << "can't convert timeout";
+            return false;
+        }
         struct timeval tm;
         tm.tv_sec = timeout;
         tm.tv_usec = 0;
@@ -117,7 +128,7 @@ bool MRedisConnection::DoOpen(const std::string &conn_string)
         pwd_pos_start += sc_redis_pwd.size();
         size_t pwd_pos_end = conn_string.find_first_of(sc_redis_separator, pwd_pos_start);
         std::string pwd = conn_string.substr(pwd_pos_start, pwd_pos_end-pwd_pos_start);
-        redisReply *p_reply = static_cast<redisReply*>(redisCommand(p_redis_, "AUTH %s", pwd));
+        redisReply *p_reply = static_cast<redisReply*>(redisCommand(p_redis_, "AUTH %s", pwd.c_str()));
         if (!p_reply)
         {
             MLOG(Error) << "auth pwd failed reply is null";
@@ -143,8 +154,8 @@ bool MRedisConnection::DoOpen(const std::string &conn_string)
     {
         db_pos_start += sc_redis_db.size();
         size_t db_pos_end = conn_string.find_first_of(sc_redis_separator, db_pos_start);
-        int db = std::stoi(conn_string.substr(db_pos_start, db_pos_end-db_pos_start));
-        redisReply *p_reply = static_cast<redisReply*>(redisCommand(p_redis_, "SELECT %d", db));
+        std::string db = conn_string.substr(db_pos_start, db_pos_end-db_pos_start);
+        redisReply *p_reply = static_cast<redisReply*>(redisCommand(p_redis_, "SELECT %s", db.c_str());
         if (!p_reply)
         {
             MLOG(Error) << "select db failed reply is null";
@@ -178,7 +189,7 @@ void MRedisConnection::DoClose()
 
 bool MRedisConnection::DoSelectDb(const std::string &db)
 {
-    redisReply *p_reply = static_cast<redisReply*>(redisCommand(p_redis_, "SELECT %d", std::stoi(db)));
+    redisReply *p_reply = static_cast<redisReply*>(redisCommand(p_redis_, "SELECT %s", db.c_str()));
     if (!p_reply)
     {
         MLOG(Error) << "select db failed reply is null";

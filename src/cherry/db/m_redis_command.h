@@ -1,7 +1,9 @@
 #ifndef _M_REDIS_COMMAND_H_
 #define _M_REDIS_COMMAND_H_
 
+#include <cherry/util/m_log.h>
 #include <cherry/util/m_idb_command.h>
+#include <cherry/util/m_convert.h>
 #include <string>
 #include <vector>
 #include <cherry/3rd/hiredis.h>
@@ -29,15 +31,18 @@ private:
     {
         if (!pp_result_)
         {
+            MLOG(Error) << "pp_result_ is null";
             return false;
         }
         if (cur_row_ >= row_count_)
         {
+            MLOG(Error) << "cur row:" << cur_row_ << " is large than row count:" << row_count_;
             return false;
         }
         redisReply *p_reply = pp_result_[cur_row_];
         if (!p_reply)
         {
+            MLOG(Error) << "p_reply is null, cur row:" << cur_row_;
             return false;
         }
         if (p_reply->type == REDIS_REPLY_INTEGER)
@@ -46,10 +51,15 @@ private:
         }
         else if (p_reply->type == REDIS_REPLY_STRING)
         {
-            param = static_cast<T>(p_reply->str);
+            if (!MConvert::StrToBaseType(p_reply->str, param))
+            {
+                MLOG(Error) << "convert str to base type failed";
+                return false;
+            }
         }
         else
         {
+            MLOG(Error) << "type:" << p_reply->type << " can't get param";
             return false;
         }
         ++cur_row_;
