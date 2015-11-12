@@ -1,4 +1,4 @@
-#define _M_TYPE_DEFINE_H_
+#ifndef _M_TYPE_DEFINE_H_
 #define _M_TYPE_DEFINE_H_
 
 #include <stdint.h>

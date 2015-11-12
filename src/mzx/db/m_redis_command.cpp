@@ -1,5 +1,6 @@
-#include "m_redis_command.h"
-#include "m_redis_connection.h"
+#include <mzx/db/m_redis_connection.h>
+#include <mzx/db/m_redis_command.h>
+#include <mzx/util/m_string.h>
 
 MRedisCommand::MRedisCommand(MRedisConnection &conn)
     :conn_(conn)
@@ -77,7 +78,7 @@ bool MRedisCommand::DoExecuteReader()
     }
     else if (p_reply_->type == REDIS_REPLY_STATUS)
     {
-        if (strcasecmp(p_reply_->str,"OK") != 0)
+        if (MString::CompareNoCase(p_reply_->str, "OK") != 0)
         {
             MLOG(Error) << "status is failed";
             return false;

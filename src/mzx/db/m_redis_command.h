@@ -1,12 +1,12 @@
 #ifndef _M_REDIS_COMMAND_H_
 #define _M_REDIS_COMMAND_H_
 
-#include <cherry/util/m_log.h>
-#include <cherry/util/m_idb_command.h>
-#include <cherry/util/m_convert.h>
+#include <mzx/util/m_log.h>
+#include <mzx/util/m_idb_command.h>
+#include <mzx/util/m_convert.h>
+#include <mzx/3rd/redis/hiredis.h>
 #include <string>
 #include <vector>
-#include <cherry/3rd/hiredis.h>
 
 class MRedisConnection;
 
@@ -22,8 +22,8 @@ private:
     {
         std::string str;
         str.resize(sizeof(param));
-        *(static_cast<T*>(const_cast<char*>(str.c_str()))) = param;
-        args_.push_back(param);
+        *(static_cast<T*>(static_cast<void*>(const_cast<char*>(str.c_str())))) = param;
+        args_.push_back(str);
         return true;
     }
     template<typename T>

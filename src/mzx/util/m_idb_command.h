@@ -2,8 +2,8 @@
 #define _M_IDB_COMMAND_H_
 
 #include <string>
-#include <cherry/util/m_type_define.h>
-#include <cherry/util/m_log.h>
+#include <mzx/util/m_type_define.h>
+#include <mzx/util/m_log.h>
 
 class MIDbCommand
 {

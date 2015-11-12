@@ -3,7 +3,7 @@
 
 #include <sstream>
 #include <string>
-#include <cherry/util/m_type_define.h>
+#include <mzx/util/m_type_define.h>
 
 class MConvert
 {
@@ -14,7 +14,7 @@ public:
         std::stringstream ss;
         return (ss << from) && (ss >> to);
     }
-    template<typename >
+    template<typename T>
     static bool BaseTypeToStr(const T &from, std::string &to)
     {
         std::stringstream ss;

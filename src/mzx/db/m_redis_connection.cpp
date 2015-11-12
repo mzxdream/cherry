@@ -1,15 +1,16 @@
-#include "m_redis_connection.h"
-#include <cherry/util/m_log.h>
-#include <cherry/util/m_convert.h>
+#include <mzx/db/m_redis_connection.h>
+#include <mzx/util/m_log.h>
+#include <mzx/util/m_convert.h>
 #include <iostream>
 #include <sys/time.h>
+#include <string>
 
-static const sc_redis_separator = ";";
-static const sc_redis_ip = "ip=";
-static const sc_redis_port = "port=";
-static const sc_redis_timeout = "timeout=";
-static const sc_redis_pwd = "pwd=";
-static const sc_redis_db = "db=";
+static const std::string sc_redis_separator = ";";
+static const std::string sc_redis_ip = "ip=";
+static const std::string sc_redis_port = "port=";
+static const std::string sc_redis_timeout = "timeout=";
+static const std::string sc_redis_pwd = "pwd=";
+static const std::string sc_redis_db = "db=";
 
 MRedisConnection::MRedisConnection()
     :p_redis_(nullptr)
@@ -49,14 +50,14 @@ bool MRedisConnection::DoOpen(const std::string &conn_string)
     }
 
     size_t ip_pos_start = conn_string.find_last_of(sc_redis_ip);
-    if (ip_pos_start == std::npos)
+    if (ip_pos_start == std::string::npos)
     {
         MLOG(Error) << "can't get ip info";
         return false;
     }
     ip_pos_start += sc_redis_ip.size();
     size_t ip_pos_end = conn_string.find_first_of(sc_redis_separator, ip_pos_start);
-    if (ip_pos_end == std::npos)
+    if (ip_pos_end == std::string::npos)
     {
         MLOG(Error) << "can't get ip info end";
         return false;
@@ -64,14 +65,14 @@ bool MRedisConnection::DoOpen(const std::string &conn_string)
     std::string ip = conn_string.substr(ip_pos_start, ip_pos_end-ip_pos_start);
 
     size_t port_pos_start = conn_string.find_last_of(sc_redis_port);
-    if (port_pos_start == std::npos)
+    if (port_pos_start == std::string::npos)
     {
         MLOG(Error) << "can't get port info";
         return false;
     }
     port_pos_start += sc_redis_port.size();
     size_t port_pos_end = conn_string.find_first_of(sc_redis_separator, port_pos_start);
-    if (port_pos_end == std::npos)
+    if (port_pos_end == std::string::npos)
     {
         MLOG(Error) << "can't get port info end";
         return false;
@@ -84,7 +85,7 @@ bool MRedisConnection::DoOpen(const std::string &conn_string)
     }
 
     size_t timeout_pos_start = conn_string.find_last_of(sc_redis_timeout);
-    if (timeout_pos_start == std::npos)
+    if (timeout_pos_start == std::string::npos)
     {
         p_redis_ = redisConnect(ip.c_str(), port);
     }
@@ -92,7 +93,7 @@ bool MRedisConnection::DoOpen(const std::string &conn_string)
     {
         timeout_pos_start += sc_redis_timeout.size();
         size_t timeout_pos_end = conn_string.find_first_of(sc_redis_separator, timeout_pos_start);
-        if (timeout_pos_end == std::npos)
+        if (timeout_pos_end == std::string::npos)
         {
             MLOG(Error) << "can't get timeout end";
             return false;
@@ -123,7 +124,7 @@ bool MRedisConnection::DoOpen(const std::string &conn_string)
     }
 
     size_t pwd_pos_start = conn_string.find_last_of(sc_redis_pwd);
-    if (pwd_pos_start != std::npos)
+    if (pwd_pos_start != std::string::npos)
     {
         pwd_pos_start += sc_redis_pwd.size();
         size_t pwd_pos_end = conn_string.find_first_of(sc_redis_separator, pwd_pos_start);
@@ -150,12 +151,12 @@ bool MRedisConnection::DoOpen(const std::string &conn_string)
     }
 
     size_t db_pos_start = conn_string.find_last_of(sc_redis_db);
-    if (db_pos_start != std::npos)
+    if (db_pos_start != std::string::npos)
     {
         db_pos_start += sc_redis_db.size();
         size_t db_pos_end = conn_string.find_first_of(sc_redis_separator, db_pos_start);
         std::string db = conn_string.substr(db_pos_start, db_pos_end-db_pos_start);
-        redisReply *p_reply = static_cast<redisReply*>(redisCommand(p_redis_, "SELECT %s", db.c_str());
+        redisReply *p_reply = static_cast<redisReply*>(redisCommand(p_redis_, "SELECT %s", db.c_str()));
         if (!p_reply)
         {
             MLOG(Error) << "select db failed reply is null";
