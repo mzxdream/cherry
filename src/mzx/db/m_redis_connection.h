@@ -1,7 +1,7 @@
 #ifndef _M_REDIS_CONNECTION_H_
 #define _M_REDIS_CONNECTION_H_
 
-#include <mzx/util/m_idb_connection.h>
+#include <mzx/db/m_idb_connection.h>
 #include <mzx/3rd/redis/hiredis.h>
 #include <string>
 

@@ -2,7 +2,7 @@
 #define _M_REDIS_COMMAND_H_
 
 #include <mzx/util/m_log.h>
-#include <mzx/util/m_idb_command.h>
+#include <mzx/db/m_idb_command.h>
 #include <mzx/util/m_convert.h>
 #include <mzx/3rd/redis/hiredis.h>
 #include <string>
