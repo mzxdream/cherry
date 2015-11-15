@@ -1,16 +1,20 @@
 #include <mzx/db/m_redis_connection.h>
+#include <mzx/db/m_redis_command.h>
 #include <mzx/util/m_log.h>
 #include <mzx/util/m_convert.h>
+#include <mzx/util/m_string.h>
 #include <iostream>
 #include <sys/time.h>
 #include <string>
 
-static const std::string sc_redis_separator = ";";
-static const std::string sc_redis_ip = "ip=";
-static const std::string sc_redis_port = "port=";
-static const std::string sc_redis_timeout = "timeout=";
-static const std::string sc_redis_pwd = "pwd=";
-static const std::string sc_redis_db = "db=";
+static const std::string sc_redis_sep = ";";
+static const std::string sc_redis_op = "="
+static const std::string sc_redis_trim = " ";
+static const std::string sc_redis_ip = "ip";
+static const std::string sc_redis_port = "port";
+static const std::string sc_redis_timeout = "timeout";
+static const std::string sc_redis_pwd = "pwd";
+static const std::string sc_redis_db = "db";
 
 MRedisConnection::MRedisConnection()
     :p_redis_(nullptr)
@@ -31,6 +35,27 @@ redisContext* MRedisConnection::GetConnection()
     return p_redis_;
 }
 
+bool MRedisConnection::AuthPwd(const std::string &pwd)
+{
+    redisReply *p_reply = static_cast<redisReply*>(redisCommand(p_redis_, "AUTH %s", pwd.c_str()));
+    if (!p_reply)
+    {
+        MLOG(Error) << "auth pwd failed reply is null";
+        return false;
+    }
+    if (p_reply->type == REDIS_REPLY_ERROR
+        || (p_reply->type == REDIS_REPLY_STATUS && MString::CompareNoCase(p_reply->str, "OK") != 0))
+    {
+        MLOG(Error) << "auth pwd failed error:" << p_reply->str;
+        freeReplyObject(p_reply);
+        p_reply = nullptr;
+        return false;
+    }
+    freeReplyObject(p_reply);
+    p_reply = nullptr;
+    return true;
+}
+
 DbConnParamStyleType MRedisConnection::DoGetParamStyleType()
 {
     return DbConnParamStyleType::CFormat;
@@ -38,7 +63,7 @@ DbConnParamStyleType MRedisConnection::DoGetParamStyleType()
 
 DbConnThreadSafetyType MRedisConnection::DoGetThreadSafetyType()
 {
-    return DbConnThreadSafetyType::Command;
+    return DbConnThreadSafetyType::Connect;
 }
 
 bool MRedisConnection::DoOpen(const std::string &conn_string)
@@ -49,61 +74,27 @@ bool MRedisConnection::DoOpen(const std::string &conn_string)
         return false;
     }
 
-    size_t ip_pos_start = conn_string.find_last_of(sc_redis_ip);
-    if (ip_pos_start == std::string::npos)
+    std::string ip;
+    if (!MString::GetParamValue(conn_string, sc_redis_ip, ip, sc_redis_op, sc_redis_sep, sc_redis_trim))
     {
         MLOG(Error) << "can't get ip info";
         return false;
     }
-    ip_pos_start += sc_redis_ip.size();
-    size_t ip_pos_end = conn_string.find_first_of(sc_redis_separator, ip_pos_start);
-    if (ip_pos_end == std::string::npos)
-    {
-        MLOG(Error) << "can't get ip info end";
-        return false;
-    }
-    std::string ip = conn_string.substr(ip_pos_start, ip_pos_end-ip_pos_start);
 
-    size_t port_pos_start = conn_string.find_last_of(sc_redis_port);
-    if (port_pos_start == std::string::npos)
+    int port = 0;
+    if (!MString::GetParamValue(conn_string, sc_redis_port, port, sc_redis_op, sc_redis_sep, sc_redis_trim))
     {
         MLOG(Error) << "can't get port info";
         return false;
     }
-    port_pos_start += sc_redis_port.size();
-    size_t port_pos_end = conn_string.find_first_of(sc_redis_separator, port_pos_start);
-    if (port_pos_end == std::string::npos)
-    {
-        MLOG(Error) << "can't get port info end";
-        return false;
-    }
-    int port = 0;
-    if (!MConvert::StrToBaseType(conn_string.substr(port_pos_start, port_pos_end-port_pos_start), port))
-    {
-        MLOG(Error) << "can't convert port";
-        return false;
-    }
 
-    size_t timeout_pos_start = conn_string.find_last_of(sc_redis_timeout);
-    if (timeout_pos_start == std::string::npos)
+    time_t timeout = 0;
+    if (!MString::GetParamValue(conn_string, sc_redis_timeout, timeout, sc_redis_op, sc_redis_sep, sc_redis_trim))
     {
         p_redis_ = redisConnect(ip.c_str(), port);
     }
     else
     {
-        timeout_pos_start += sc_redis_timeout.size();
-        size_t timeout_pos_end = conn_string.find_first_of(sc_redis_separator, timeout_pos_start);
-        if (timeout_pos_end == std::string::npos)
-        {
-            MLOG(Error) << "can't get timeout end";
-            return false;
-        }
-        time_t timeout = 0;
-        if (!MConvert::StrToBaseType(conn_string.substr(timeout_pos_start, timeout_pos_end-timeout_pos_start), timeout))
-        {
-            MLOG(Error) << "can't convert timeout";
-            return false;
-        }
         struct timeval tm;
         tm.tv_sec = timeout;
         tm.tv_usec = 0;
@@ -123,58 +114,59 @@ bool MRedisConnection::DoOpen(const std::string &conn_string)
         return false;
     }
 
-    size_t pwd_pos_start = conn_string.find_last_of(sc_redis_pwd);
-    if (pwd_pos_start != std::string::npos)
+    std::string pwd;
+    if (MString::GetParamValue(conn_string, sc_redis_pwd, pwd, sc_redis_op, sc_redis_sep, sc_redis_trim))
     {
-        pwd_pos_start += sc_redis_pwd.size();
-        size_t pwd_pos_end = conn_string.find_first_of(sc_redis_separator, pwd_pos_start);
-        std::string pwd = conn_string.substr(pwd_pos_start, pwd_pos_end-pwd_pos_start);
-        redisReply *p_reply = static_cast<redisReply*>(redisCommand(p_redis_, "AUTH %s", pwd.c_str()));
-        if (!p_reply)
+        if (!AuthPwd(pwd))
         {
-            MLOG(Error) << "auth pwd failed reply is null";
+            MLOG(Error) << "auth pwd:" << pwd << " failed";
             redisFree(p_redis_);
             p_redis_ = nullptr;
             return false;
         }
-        if (p_reply->type == REDIS_REPLY_ERROR)
-        {
-            MLOG(Error) << "auth pwd failed error:" << p_reply->str;
-            redisFree(p_redis_);
-            p_redis_ = nullptr;
-            freeReplyObject(p_reply);
-            p_reply = nullptr;
-            return false;
-        }
-        freeReplyObject(p_reply);
-        p_reply = nullptr;
     }
 
-    size_t db_pos_start = conn_string.find_last_of(sc_redis_db);
-    if (db_pos_start != std::string::npos)
+    std::string db;
+    if (MString::GetParamValue(conn_string, sc_redis_db, db, sc_redis_op, sc_redis_sep, sc_redis_trim))
     {
-        db_pos_start += sc_redis_db.size();
-        size_t db_pos_end = conn_string.find_first_of(sc_redis_separator, db_pos_start);
-        std::string db = conn_string.substr(db_pos_start, db_pos_end-db_pos_start);
-        redisReply *p_reply = static_cast<redisReply*>(redisCommand(p_redis_, "SELECT %s", db.c_str()));
-        if (!p_reply)
+        if (!SelectDb(db))
         {
-            MLOG(Error) << "select db failed reply is null";
+            MLOG(Error) << "select db:" << db << " failed";
             redisFree(p_redis_);
             p_redis_ = nullptr;
             return false;
         }
-        if (p_reply->type == REDIS_REPLY_ERROR)
-        {
-            MLOG(Error) << "select db failed error:" << p_reply->str;
-            redisFree(p_redis_);
-            p_redis_ = nullptr;
-            freeReplyObject(p_reply);
-            p_reply = nullptr;
-            return false;
-        }
+    }
+    conn_string_ = conn_string;
+    return true;
+}
+
+bool MRedisConnection::DoCheckConnect()
+{
+    redisReply *p_reply = static_cast<redisReply*>(redisCommand(p_redis_, "PING"));
+    if (!p_reply)
+    {
+        MLOG(Error) << "ping failed reply is null";
+        return false;
+    }
+    if (p_reply->type == REDIS_REPLY_ERROR
+        || (p_reply->type == REDIS_REPLY_STATUS && MString::CompareNoCase(p_reply->str, "PONG") != 0))
+    {
+        MLOG(Error) << "ping failed error:" << p_reply->str;
         freeReplyObject(p_reply);
         p_reply = nullptr;
+        return false;
+    }
+    freeReplyObject(p_reply);
+    p_reply = nullptr;
+    return true;
+}
+
+bool MRedisConnection::DoCheckAndReconnect()
+{
+    if (!CheckConnect())
+    {
+        return Open(conn_string_);
     }
     return true;
 }
@@ -196,7 +188,8 @@ bool MRedisConnection::DoSelectDb(const std::string &db)
         MLOG(Error) << "select db failed reply is null";
         return false;
     }
-    if (p_reply->type == REDIS_REPLY_ERROR)
+    if (p_reply->type == REDIS_REPLY_ERROR
+        || (p_reply->type == REDIS_REPLY_STATUS && MString::CompareNoCase(p_reply->str, "OK") != 0))
     {
         MLOG(Error) << "select db failed error:" << p_reply->str;
         freeReplyObject(p_reply);
@@ -208,22 +201,7 @@ bool MRedisConnection::DoSelectDb(const std::string &db)
     return true;
 }
 
-bool MRedisConnection::DoStartTran()
-{
-    return false;
-}
-
-bool MRedisConnection::DoCommitTran()
-{
-    return false;
-}
-
-bool MRedisConnection::DoRollBackTran()
-{
-    return false;
-}
-
 MIDbCommand* MRedisConnection::DoCreateCommand()
 {
-    return nullptr;
+    return new MRedisCommand(*this);
 }

@@ -1,4 +1,4 @@
-/* Copyright (c) 2008, 2013, Oracle and/or its affiliates. All rights reserved.
+/* Copyright (c) 2008, 2014, Oracle and/or its affiliates. All rights reserved.
 
   This program is free software; you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -57,18 +57,22 @@ typedef int opaque_mdl_duration;
 typedef int opaque_mdl_status;
 
 struct TABLE_SHARE;
-/*
-  There are 3 known bison parsers in the server:
-  - (1) the SQL parser itself, sql/sql_yacc.yy
-  - (2) storage/innobase/fts/fts0pars.y
-  - (3) storage/innobase/pars/pars0grm.y
-  What is instrumented here are the tokens from the SQL query text (1),
-  to make digests.
-  Now, to avoid name pollution and conflicts with different YYSTYPE definitions,
-  an opaque structure is used here.
-  The real type to use when invoking the digest api is LEX_YYSTYPE.
-*/
-struct OPAQUE_LEX_YYSTYPE;
+
+struct sql_digest_storage;
+
+#ifdef __cplusplus
+  class THD;
+#else
+  /*
+    Phony declaration when compiling C code.
+    This is ok, because the C code will never have a THD anyway.
+  */
+  struct opaque_THD
+  {
+    int dummy;
+  };
+  typedef struct opaque_THD THD;
+#endif
 
 /**
   @file mysql/psi/psi.h
@@ -136,6 +140,13 @@ struct PSI_socket;
 typedef struct PSI_socket PSI_socket;
 
 /**
+  Interface for an instrumented prepared statement.
+  This is an opaque structure.
+*/
+struct PSI_prepared_stmt;
+typedef struct PSI_prepared_stmt PSI_prepared_stmt;
+
+/**
   Interface for an instrumented table operation.
   This is an opaque structure.
 */
@@ -190,6 +201,17 @@ typedef struct PSI_sp_locker PSI_sp_locker;
 */
 struct PSI_metadata_lock;
 typedef struct PSI_metadata_lock PSI_metadata_lock;
+
+/**
+  Interface for an instrumented stage progress.
+  This is a public structure, for efficiency.
+*/
+struct PSI_stage_progress
+{
+  ulonglong m_work_completed;
+  ulonglong m_work_estimated;
+};
+typedef struct PSI_stage_progress PSI_stage_progress;
 
 /** Entry point for the performance schema interface. */
 struct PSI_bootstrap
@@ -269,6 +291,14 @@ typedef struct PSI_bootstrap PSI_bootstrap;
 
 #ifndef DISABLE_PSI_TRANSACTION
 #define DISABLE_PSI_TRANSACTION
+#endif
+
+#ifndef DISABLE_PSI_SP
+#define DISABLE_PSI_SP
+#endif
+
+#ifndef DISABLE_PSI_PS
+#define DISABLE_PSI_PS
 #endif
 
 #endif
@@ -375,6 +405,17 @@ typedef struct PSI_bootstrap PSI_bootstrap;
 */
 #ifndef DISABLE_PSI_SP
 #define HAVE_PSI_SP_INTERFACE
+#endif
+
+/**
+  @def DISABLE_PSI_PS
+  Compiling option to disable the prepared statement instrumentation.
+  @sa DISABLE_PSI_MUTEX
+*/
+#ifndef DISABLE_PSI_STATEMENT
+#ifndef DISABLE_PSI_PS
+#define HAVE_PSI_PS_INTERFACE
+#endif
 #endif
 
 /**
@@ -517,7 +558,12 @@ enum PSI_mutex_operation
 };
 typedef enum PSI_mutex_operation PSI_mutex_operation;
 
-/** Operation performed on an instrumented rwlock. */
+/**
+  Operation performed on an instrumented rwlock.
+  For basic READ / WRITE lock,
+  operations are "READ" or "WRITE".
+  For SX-locks, operations are "SHARED", "SHARED-EXCLUSIVE" or "EXCLUSIVE".
+*/
 enum PSI_rwlock_operation
 {
   /** Read lock. */
@@ -527,7 +573,21 @@ enum PSI_rwlock_operation
   /** Read lock attempt. */
   PSI_RWLOCK_TRYREADLOCK= 2,
   /** Write lock attempt. */
-  PSI_RWLOCK_TRYWRITELOCK= 3
+  PSI_RWLOCK_TRYWRITELOCK= 3,
+
+  /** Shared lock. */
+  PSI_RWLOCK_SHAREDLOCK= 4,
+  /** Shared Exclusive lock. */
+  PSI_RWLOCK_SHAREDEXCLUSIVELOCK= 5,
+  /** Exclusive lock. */
+  PSI_RWLOCK_EXCLUSIVELOCK= 6,
+  /** Shared lock attempt. */
+  PSI_RWLOCK_TRYSHAREDLOCK= 7,
+  /** Shared Exclusive lock attempt. */
+  PSI_RWLOCK_TRYSHAREDEXCLUSIVELOCK= 8,
+  /** Exclusive lock attempt. */
+  PSI_RWLOCK_TRYEXCLUSIVELOCK= 9
+
 };
 typedef enum PSI_rwlock_operation PSI_rwlock_operation;
 
@@ -1105,37 +1165,6 @@ struct PSI_metadata_locker_state_v1
 };
 typedef struct PSI_metadata_locker_state_v1 PSI_metadata_locker_state_v1;
 
-#define PSI_MAX_DIGEST_STORAGE_SIZE 1024
-
-/**
-  Structure to store token count/array for a statement
-  on which digest is to be calculated.
-*/
-struct PSI_digest_storage
-{
-  my_bool m_full;
-  int m_byte_count;
-  /** Character set number. */
-  uint m_charset_number;
-  unsigned char m_token_array[PSI_MAX_DIGEST_STORAGE_SIZE];
-};
-typedef struct PSI_digest_storage PSI_digest_storage;
-
-/**
-  State data storage for @c digest_start, @c digest_add_token.
-  This structure provide temporary storage to a digest locker.
-  The content of this structure is considered opaque,
-  the fields are only hints of what an implementation
-  of the psi interface can use.
-  This memory is provided by the instrumented code for performance reasons.
-*/
-struct PSI_digest_locker_state
-{
-  int m_last_id_index;
-  PSI_digest_storage m_digest_storage;
-};
-typedef struct PSI_digest_locker_state PSI_digest_locker_state;
-
 /* Duplicate of NAME_LEN, to avoid dependency on mysql_com.h */
 #define PSI_SCHEMA_NAME_LEN (64 * 3)
 
@@ -1153,6 +1182,8 @@ struct PSI_statement_locker_state_v1
 {
   /** Discarded flag. */
   my_bool m_discarded;
+  /** In prepare flag. */
+  my_bool m_in_prepare;
   /** Metric, no index used flag. */
   uchar m_no_index_used;
   /** Metric, no good index used flag. */
@@ -1198,12 +1229,13 @@ struct PSI_statement_locker_state_v1
   /** Metric, number of sort scans. */
   ulong m_sort_scan;
   /** Statement digest. */
-  PSI_digest_locker_state m_digest_state;
+  const struct sql_digest_storage *m_digest;
   /** Current schema name. */
   char m_schema_name[PSI_SCHEMA_NAME_LEN];
   /** Length in bytes of @c m_schema_name. */
   uint m_schema_name_length;
   PSI_sp_share *m_parent_sp_share;
+  PSI_prepared_stmt *m_parent_prepared_stmt;
 };
 typedef struct PSI_statement_locker_state_v1 PSI_statement_locker_state_v1;
 
@@ -1491,7 +1523,8 @@ typedef PSI_table* (*rebind_table_v1_t)
   Note that the table handle is invalid after this call.
   @param table the table handle to close
 */
-typedef void (*close_table_v1_t)(struct PSI_table *table);
+typedef void (*close_table_v1_t)(struct TABLE_SHARE *server_share,
+                                 struct PSI_table *table);
 
 /**
   Create a file instrumentation for a created file.
@@ -1526,6 +1559,14 @@ typedef int (*spawn_thread_v1_t)(PSI_thread_key key,
 */
 typedef struct PSI_thread* (*new_thread_v1_t)
   (PSI_thread_key key, const void *identity, ulonglong thread_id);
+
+/**
+  Assign a THD to an instrumented thread.
+  @param thread the instrumented thread
+  @param THD the sql layer THD to assign
+*/
+typedef void (*set_thread_THD_v1_t)(struct PSI_thread *thread,
+                                    THD *thd);
 
 /**
   Assign an id to an instrumented thread.
@@ -1788,8 +1829,11 @@ typedef struct PSI_table_locker* (*start_table_io_wait_v1_t)
 /**
   Record a table instrumentation io wait end event.
   @param locker a table locker for the running thread
+  @param numrows the number of rows involved in io
 */
-typedef void (*end_table_io_wait_v1_t)(struct PSI_table_locker *locker);
+typedef void (*end_table_io_wait_v1_t)
+  (struct PSI_table_locker *locker,
+   ulonglong numrows);
 
 /**
   Record a table instrumentation lock wait start event.
@@ -1890,9 +1934,12 @@ typedef void (*end_file_close_wait_v1_t)
   @param key the key of the new stage
   @param src_file the source file name
   @param src_line the source line number
+  @return the new stage progress
 */
-typedef void (*start_stage_v1_t)
+typedef PSI_stage_progress* (*start_stage_v1_t)
   (PSI_stage_key key, const char *src_file, int src_line);
+
+typedef PSI_stage_progress* (*get_current_stage_progress_v1_t)(void);
 
 /** End the current stage. */
 typedef void (*end_stage_v1_t) (void);
@@ -2231,6 +2278,37 @@ typedef void (*set_socket_info_v1_t)(struct PSI_socket *socket,
 typedef void (*set_socket_thread_owner_v1_t)(struct PSI_socket *socket);
 
 /**
+  Get a prepare statement.
+  @param locker a statement locker for the running thread.
+*/
+typedef PSI_prepared_stmt* (*create_prepared_stmt_v1_t)
+  (void *identity, uint stmt_id, PSI_statement_locker *locker,
+   const char *stmt_name, size_t stmt_name_length,
+   const char *name, size_t length);
+
+/**
+  destroy a prepare statement.
+  @param prepared_stmt prepared statement.
+*/
+typedef void (*destroy_prepared_stmt_v1_t)
+  (PSI_prepared_stmt *prepared_stmt);
+
+/**
+  repreare a prepare statement.
+  @param prepared_stmt prepared statement.
+*/
+typedef void (*reprepare_prepared_stmt_v1_t)
+  (PSI_prepared_stmt *prepared_stmt);
+
+/**
+  Record a prepare statement instrumentation execute event.
+  @param locker a statement locker for the running thread.
+  @param prepared_stmt prepared statement.
+*/
+typedef void (*execute_prepared_stmt_v1_t)
+  (PSI_statement_locker *locker, PSI_prepared_stmt* prepared_stmt);
+
+/**
   Get a digest locker for the current statement.
   @param locker a statement locker for the running thread
 */
@@ -2243,8 +2321,8 @@ typedef struct PSI_digest_locker * (*digest_start_v1_t)
   @param token the lexical token to add
   @param yylval the lexical token attributes
 */
-typedef struct PSI_digest_locker* (*digest_add_token_v1_t)
-  (struct PSI_digest_locker *locker, uint token, struct OPAQUE_LEX_YYSTYPE *yylval);
+typedef void (*digest_end_v1_t)
+  (struct PSI_digest_locker *locker, const struct sql_digest_storage *digest);
 
 typedef PSI_sp_locker* (*start_sp_v1_t)
   (struct PSI_sp_locker_state_v1 *state, struct PSI_sp_share* sp_share);
@@ -2371,6 +2449,8 @@ struct PSI_v1
   new_thread_v1_t new_thread;
   /** @sa set_thread_id_v1_t. */
   set_thread_id_v1_t set_thread_id;
+  /** @sa set_thread_THD_v1_t. */
+  set_thread_THD_v1_t set_thread_THD;
   /** @sa get_thread_v1_t. */
   get_thread_v1_t get_thread;
   /** @sa set_thread_user_v1_t. */
@@ -2452,6 +2532,8 @@ struct PSI_v1
   end_file_close_wait_v1_t end_file_close_wait;
   /** @sa start_stage_v1_t. */
   start_stage_v1_t start_stage;
+  /** @sa get_current_stage_progress_v1_t. */
+  get_current_stage_progress_v1_t get_current_stage_progress;
   /** @sa end_stage_v1_t. */
   end_stage_v1_t end_stage;
   /** @sa get_thread_statement_locker_v1_t. */
@@ -2526,10 +2608,18 @@ struct PSI_v1
   set_socket_info_v1_t set_socket_info;
   /** @sa set_socket_thread_owner_v1_t. */
   set_socket_thread_owner_v1_t set_socket_thread_owner;
+  /** @sa create_prepared_stmt_v1_t. */
+  create_prepared_stmt_v1_t create_prepared_stmt;
+  /** @sa destroy_prepared_stmt_v1_t. */
+  destroy_prepared_stmt_v1_t destroy_prepared_stmt;
+  /** @sa reprepare_prepared_stmt_v1_t. */
+  reprepare_prepared_stmt_v1_t reprepare_prepared_stmt;
+  /** @sa execute_prepared_stmt_v1_t. */
+  execute_prepared_stmt_v1_t execute_prepared_stmt;
   /** @sa digest_start_v1_t. */
   digest_start_v1_t digest_start;
-  /** @sa digest_add_token_v1_t. */
-  digest_add_token_v1_t digest_add_token;
+  /** @sa digest_end_v1_t. */
+  digest_end_v1_t digest_end;
   /** @sa set_thread_connect_attrs_v1_t. */
   set_thread_connect_attrs_v1_t set_thread_connect_attrs;
   /** @sa start_sp_v1_t. */

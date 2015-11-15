@@ -18,6 +18,7 @@ AUX_SOURCE_DIRECTORY(3rd/redis SRC_REDIS)
 
 INCLUDE_DIRECTORIES(
     ../
+    3rd/mysql/
 )
 
 LINK_DIRECTORIES(
@@ -31,8 +32,9 @@ LINK_LIBRARIES(
 SET(SRC_LIST
     ${SRC_UTIL}
     ${SRC_DB}
-    ${SRC_REDIS}
     ${SRC_THREAD}
+    ${SRC_REDIS}
+    ${SRC_MYSQL}
 )
 
 ADD_LIBRARY(mzx SHARED ${SRC_LIST})

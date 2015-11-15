@@ -13,18 +13,19 @@ public:
     virtual ~MRedisConnection();
 public:
     redisContext* GetConnection();
+    bool AuthPwd(const std::string &pwd);
 private:
     virtual DbConnParamStyleType DoGetParamStyleType() override;
     virtual DbConnThreadSafetyType DoGetThreadSafetyType() override;
     virtual bool DoOpen(const std::string &conn_string) override;
+    virtual bool DoCheckConnect() override;
+    virtual bool DoCheckAndReconnect() override;
     virtual void DoClose() override;
     virtual bool DoSelectDb(const std::string &db) override;
-    virtual bool DoStartTran() override;
-    virtual bool DoCommitTran() override;
-    virtual bool DoRollBackTran() override;
     virtual MIDbCommand* DoCreateCommand() override;
 private:
     redisContext *p_redis_;
+    std::string conn_string_;
 };
 
 #endif

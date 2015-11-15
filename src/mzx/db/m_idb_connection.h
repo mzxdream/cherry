@@ -39,6 +39,14 @@ public:
     {
         return DoOpen(conn_string);
     }
+    bool CheckConnect()
+    {
+        return DoCheckConnect();
+    }
+    bool CheckAndReConnect()
+    {
+        return DoCheckAndReconnect();
+    }
     void Close()
     {
         DoClose();
@@ -46,18 +54,6 @@ public:
     bool SelectDb(const std::string &db)
     {
         return DoSelectDb(db);
-    }
-    bool StartTran()
-    {
-        return DoStartTran();
-    }
-    bool CommitTran()
-    {
-        return DoCommitTran();
-    }
-    virtual bool RollBackTran()
-    {
-        return DoRollBackTran();
     }
     MIDbCommand* CreateCommand()
     {
@@ -67,20 +63,10 @@ private:
     virtual DbConnParamStyleType DoGetParamStyleType() = 0;
     virtual DbConnThreadSafetyType DoGetThreadSafetyType() = 0;
     virtual bool DoOpen(const std::string &conn_string) = 0;
+    virtual bool DoCheckConnect() = 0;
+    virtual bool DoCheckAndReconnect() = 0;
     virtual void DoClose() = 0;
     virtual bool DoSelectDb(const std::string &db)
-    {
-        return false;
-    }
-    virtual bool DoStartTran()
-    {
-        return false;
-    }
-    virtual bool DoCommitTran()
-    {
-        return false;
-    }
-    virtual bool DoRollBackTran()
     {
         return false;
     }

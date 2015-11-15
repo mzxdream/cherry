@@ -23,15 +23,16 @@ public:
         if (!DoBeforeAddParam())
         {
             MLOG(Error) << "ExecuteNonQuery DoBeforeAddParam failed";
-            return -1;
+            return false;
         }
         if (!DoAddParam(args...))
         {
             MLOG(Error) << "ExecuteNonQuery DoAddParam failed";
-            return -2;
+            return false;
         }
         return DoExecuteNonQuery();
     }
+
     template<typename... Args>
     bool ExecuteReader(const Args&... args)
     {

@@ -37,7 +37,18 @@ bool MRedisCommand::DoBeforeAddParam()
 
 int MRedisCommand::DoExecuteNonQuery()
 {
-    return 0;
+    if (!ExecuteReader())
+    {
+        MLOG(Error) << "execute failed";
+        return 0;
+    }
+    int ret = 0;
+    if (!NextRecord(ret))
+    {
+        MLOG(Error) << "get ret failed";
+        return 0;
+    }
+    return ret;
 }
 
 bool MRedisCommand::DoExecuteReader()
@@ -64,12 +75,12 @@ bool MRedisCommand::DoExecuteReader()
 
     if (!p_reply_)
     {
-        MLOG(Error) << "DoExecuteReader failed reply is null";
+        MLOG(Error) << "DoExecute failed reply is null";
         return false;
     }
     if (p_reply_->type == REDIS_REPLY_ERROR)
     {
-        MLOG(Error) << "DoExecuteReader failed reply error:" << p_reply_->str;
+        MLOG(Error) << "DoExecute failed reply error:" << p_reply_->str;
         return false;
     }
     else if (p_reply_->type == REDIS_REPLY_NIL)
@@ -80,7 +91,7 @@ bool MRedisCommand::DoExecuteReader()
     {
         if (MString::CompareNoCase(p_reply_->str, "OK") != 0)
         {
-            MLOG(Error) << "status is failed";
+            MLOG(Error) << "status is failed error:" << p_reply_->str;
             return false;
         }
     }
