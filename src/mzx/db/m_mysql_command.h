@@ -46,7 +46,7 @@ private:
     virtual bool DoGetParam(double &param) override;
     virtual bool DoGetParam(std::string &param) override;
 private:
-
+    MMysqlConnection &conn_;
 };
 
 #endif

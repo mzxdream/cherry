@@ -5,7 +5,7 @@
 #include <mzx/util/m_string.h>
 
 static const std::string sc_mysql_sep = ";";
-static const std::string sc_mysql_op = "="
+static const std::string sc_mysql_op = "=";
 static const std::string sc_mysql_trim = " ";
 static const std::string sc_mysql_ip = "ip";
 static const std::string sc_mysql_port = "port";
@@ -113,7 +113,7 @@ bool MMysqlConnection::DoOpen(const std::string &conn_string)
 
     if (mysql_real_connect(p_mysql_, p_ip, p_user, p_pwd, p_db, port, nullptr, client_flag) != p_mysql_)
     {
-        MLOG(Error) << "connect failed errorno:" << mysql_errno(p_mysql_) << " error:" << mysql_error(p_msql_);
+        MLOG(Error) << "connect failed errorno:" << mysql_errno(p_mysql_) << " error:" << mysql_error(p_mysql_);
         mysql_close(p_mysql_);
         p_mysql_ = nullptr;
         return false;
@@ -140,41 +140,41 @@ bool MMysqlConnection::DoCheckConnect()
         MLOG(Error) << "select 1+1 failed errorno:" << mysql_errno(p_mysql_) << " error:" << mysql_error(p_mysql_);
         return false;
     }
-//    MYSQL_RES *p_res = mysql_store_result(p_mysql_);
-//    if (!p_res)
-//    {
-//        MLOG(Error) << "get res failed errorno:" << mysql_errno(p_mysql_) << " error:" << mysql_error(p_mysql_);
-//        return false;
-//    }
-//    MYSQL_ROW row = mysql_fetch_row(p_res);
-//    if (!row)
-//    {
-//        MLOG(Error) << "get row failed errorno:" << mysql_errno(p_mysql_) << " error:" << mysql_error(p_mysql_);
-//        mysql_free_result(p_res);
-//        return false;
-//    }
-//    if (mysql_num_fields(p_res) != 1)
-//    {
-//        MLOG(Error) << "fields is not 1";
-//        mysql_free_result(p_res);
-//        return false;
-//    }
-//    unsigned long *p_lengths = mysql_fetch_lengths(p_res);
-//    if (!p_lengths)
-//    {
-//        MLOG(Error) << "fields is not 1";
-//        mysql_free_result(p_res);
-//        return false;
-//    }
-//    int result = 0;
-//    if (!MConvert::StrToBaseType(std::string(row[0], p_lengths[0]), result)
-//        || result != 2)
-//    {
-//        MLOG(Error) << "result is wrong";
-//        mysql_free_result(p_res);
-//        return false;
-//    }
-//    mysql_free_result(p_res);
+    MYSQL_RES *p_res = mysql_store_result(p_mysql_);
+    if (!p_res)
+    {
+        MLOG(Error) << "get res failed errorno:" << mysql_errno(p_mysql_) << " error:" << mysql_error(p_mysql_);
+        return false;
+    }
+    MYSQL_ROW row = mysql_fetch_row(p_res);
+    if (!row)
+    {
+        MLOG(Error) << "get row failed errorno:" << mysql_errno(p_mysql_) << " error:" << mysql_error(p_mysql_);
+        mysql_free_result(p_res);
+        return false;
+    }
+    if (mysql_num_fields(p_res) != 1)
+    {
+        MLOG(Error) << "fields is not 1";
+        mysql_free_result(p_res);
+        return false;
+    }
+    unsigned long *p_lengths = mysql_fetch_lengths(p_res);
+    if (!p_lengths)
+    {
+        MLOG(Error) << "fields is not 1";
+        mysql_free_result(p_res);
+        return false;
+    }
+    int result = 0;
+    if (!MConvert::StrToBaseType(std::string(row[0], p_lengths[0]), result)
+        || result != 2)
+    {
+        MLOG(Error) << "result is wrong";
+        mysql_free_result(p_res);
+        return false;
+    }
+    mysql_free_result(p_res);
     return true;
 }
 

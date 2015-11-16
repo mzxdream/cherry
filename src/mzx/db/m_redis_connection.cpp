@@ -8,7 +8,7 @@
 #include <string>
 
 static const std::string sc_redis_sep = ";";
-static const std::string sc_redis_op = "="
+static const std::string sc_redis_op = "=";
 static const std::string sc_redis_trim = " ";
 static const std::string sc_redis_ip = "ip";
 static const std::string sc_redis_port = "port";
