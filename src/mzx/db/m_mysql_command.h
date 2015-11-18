@@ -6,6 +6,7 @@
 #include <mzx/util/m_convert.h>
 #include <mzx/3rd/mysql/mysql.h>
 #include <string>
+#include <vector>
 
 class MMysqlConnection;
 
@@ -47,6 +48,8 @@ private:
     virtual bool DoGetParam(std::string &param) override;
 private:
     MMysqlConnection &conn_;
+    MYSQL_STMT *p_stmt_;
+    std::vector<MYSQL_BIND> params_;
 };
 
 #endif
