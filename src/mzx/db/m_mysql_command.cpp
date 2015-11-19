@@ -70,17 +70,33 @@ bool MMysqlCommand::DoExecuteReader()
     if (param_count != params_.size())
     {
         MLOG(Error) << "param count is not match need:" << param_count << " actual is :" << params_.size();
-        return 0;
+        return false;
     }
     if (mysql_stmt_bind_param(p_stmt_, &params_[0]) != 0)
     {
         MLOG(Error) << "bind failed error:" << mysql_stmt_error(p_stmt_);
-        return 0;
+        return false;
     }
+    my_bool update_max_length = 1;
+    mysql_stmt_attr_set(p_stmt_, STMT_ATTR_UPDATE_MAX_LENGTH, static_cast<void*>(&update_max_length));
     if (mysql_stmt_execute(p_stmt_) != 0)
     {
         MLOG(Error) << "execute failed error:" << mysql_stmt_error(p_stmt_);
-        return 0;
+        return false;
     }
+    if (mysql_stmt_store_result(p_stmt_) != 0)
+    {
+        MLOG(Error) << "store result failed error:" << mysql_stmt_error(p_stmt_);
+        return false;
+    }
+    MYSQL_RES *p_meta_res = mysql_stmt_result_metadata(p_stmt_);
+    if (!p_meta_res)
+    {
+        MLOG(Error) << "have not meta res error:" << mysql_stmt_error(p_stmt_);
+        return false;
+    }
+    unsigned long field_count = mysql_num_fields(p_meta_res);
+    MYSQL_FIELD *p_field_list = mysql_fetch_fields(p_meta_res);
+
 
 }
