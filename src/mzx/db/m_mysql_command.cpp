@@ -1,9 +1,12 @@
 #include <mzx/db/m_mysql_connection.h>
 #include <mzx/db/m_mysql_command.h>
+#include <cstring>
 
 MMysqlCommand::MMysqlCommand(MMysqlConnection &conn)
     :conn_(conn)
     ,p_stmt_(nullptr)
+    ,cur_row_(0)
+    ,cur_col_(0)
 {
 }
 
@@ -40,6 +43,7 @@ bool MMysqlCommand::DoPrepair(const std::string &command)
 bool MMysqlCommand::DoBeforeAddParam()
 {
     params_.clear();
+    datas_.clear();
     return true;
 }
 
@@ -95,8 +99,138 @@ bool MMysqlCommand::DoExecuteReader()
         MLOG(Error) << "have not meta res error:" << mysql_stmt_error(p_stmt_);
         return false;
     }
-    unsigned long field_count = mysql_num_fields(p_meta_res);
     MYSQL_FIELD *p_field_list = mysql_fetch_fields(p_meta_res);
-
-
+    if (!p_field_list)
+    {
+        mysql_free_result(p_meta_res);
+        MLOG(Error) << "mysql_fetch_fields is null unknown error";
+        return false;
+    }
+    unsigned long field_count = mysql_num_fields(p_meta_res);
+    if (field_count == 0)
+    {
+        mysql_free_result(p_meta_res);
+        MLOG(Error) << "mysql field_count is 0";
+        return false;
+    }
+    out_params_.resize(field_count);
+    out_datas_.resize(field_count);
+    out_lengths_.resize(field_count);
+    out_is_nulls_.resize(field_count);
+    for (size_t i = 0; i < field_count; ++i)
+    {
+        out_datas_[i].resize(p_field_list[i].max_length);
+        memset(&(out_params_[i]), 0, sizeof(out_params_[i]));
+        out_params_[i].buffer_type = p_field_list[i].type;
+        out_params_[i].buffer = const_cast<char*>(out_datas_[i].c_str());
+        out_params_[i].buffer_length = p_field_list[i].max_length;
+        out_params_[i].length = &(out_lengths_[i]);
+        out_params_[i].is_null = &(out_is_nulls_[i]);
+        out_params_[i].is_unsigned = (p_field_list[i].flags & UNSIGNED_FLAG);
+    }
+    mysql_free_result(p_meta_res);
+    if (mysql_stmt_bind_result(p_stmt_, &out_params_[0]) != 0)
+    {
+        MLOG(Error) << "bind result failed";
+        return false;
+    }
+    cur_row_ = 0;
+    cur_col_ = 0;
+    return true;
 }
+
+bool MMysqlCommand::DoAddParam(const int8_t &param)
+{
+    return AddBaseTypeParam(MYSQL_TYPE_TINY, 0, param);
+}
+
+bool MMysqlCommand::DoAddParam(const uint8_t &param)
+{
+    return AddBaseTypeParam(MYSQL_TYPE_TINY, 1, param);
+}
+
+bool MMysqlCommand::DoAddParam(const int16_t &param)
+{
+    return AddBaseTypeParam(MYSQL_TYPE_SHORT, 0, param);
+}
+
+bool MMysqlCommand::DoAddParam(const uint16_t &param)
+{
+    return AddBaseTypeParam(MMYSQL_TYPE_SHORT, 1, param);
+}
+
+bool MMysqlCommand::DoAddParam(const int32_t &param)
+{
+    return AddBaseTypeParam(MYSQL_TYPE_LONG, 0, param);
+}
+
+bool MMysqlCommand::DoAddParam(const uint32_t &param)
+{
+    return AddBaseTypeParam(MMYSQL_TYPE_LONG, 1, param);
+}
+
+bool MMysqlCommand::DoAddParam(const int64_t &param)
+{
+    return AddBaseTypeParam(MYSQL_TYPE_LONGLONG, 0, param);
+}
+
+bool MMysqlCommand::DoAddParam(const uint64_t &param)
+{
+    return AddBaseTypeParam(MYSQL_TYPE_LONGLONG, 1, param);
+}
+
+bool MMysqlCommand::DoAddParam(const float &param)
+{
+    return AddBaseTypeParam(MYSQL_TYPE_FLOAT, 0, param);
+}
+
+bool MMysqlCommand::DoAddParam(const double &param)
+{
+    return AddBaseTypeParam(MYSQL_TYPE_DOUBLE, 0, param);
+}
+
+bool MMysqlCommand::DoAddParam(const std::string &param)
+{
+    datas_.push_back(param);
+    std::string &str = datas_.back();
+    MYSQL_BIND bind;
+    memset(&bind, 0, sizeof(bind));
+    bind.buffer_type = MYSQL_TYPE_VAR_STRING;
+    bind.buffer = const_cast<char*>(str.c_str());
+    bind.buffer_length = str.size();
+    bind.length = nullptr;
+    bind.is_null = nullptr;
+    bind.is_unsigned = 0;
+    params_.push_back(bind);
+    return true;
+}
+
+bool MMysqlCommand::DoAddParam(const MBlob &param)
+{
+    datas_.push_back(param.GetString());
+    std::string &str = datas_.back();
+    MYSQL_BIND bind;
+    memset(&bind, 0, sizeof(bind));
+    bind.buffer_type = MYSQL_TYPE_BLOB;
+    bind.buffer = const_cast<char*>(str.c_str());
+    bind.buffer_length = str.size();
+    bind.length = nullptr;
+    bind.is_null = nullptr;
+    bind.is_unsigned = 0;
+    params_.push_back(bind);
+    return true;
+}
+
+bool MMysqlCommand::CheckResult()
+{
+    if (cur_row_ == 0)
+    {
+
+    }
+    if (cur_col_ >= out_params_.size())
+    {
+
+    }
+}
+
+bool MMysqlCommand::DoGetParam()

@@ -7,6 +7,7 @@
 #include <mzx/3rd/mysql/mysql.h>
 #include <string>
 #include <vector>
+#include <cstring>
 
 class MMysqlConnection;
 
@@ -47,9 +48,40 @@ private:
     virtual bool DoGetParam(double &param) override;
     virtual bool DoGetParam(std::string &param) override;
 private:
+    template<typename T>
+    bool AddBaseTypeParam(unsigned int buffer_type, int is_unsigned, const T &param)
+    {
+        datas_.push_back(std::string(""));
+        std::string &str = datas_.back();
+        str.resize(sizeof(param));
+        memcpy(const_cast<char*>(str.c_str()), &param, sizeof(param));
+        MYSQL_BIND bind;
+        memset(&bind, 0, sizeof(bind));
+        bind.buffer_type = buffer_type;
+        bind.buffer = const_cast<char*>(str.c_str());
+        bind.buffer_length = str.size();
+        bind.length = nullptr;
+        bind.is_null = nullptr;
+        bind.is_unsigned = is_unsigned;
+        params_.push_back(bind);
+        return true;
+    }
+    template<typename T>
+    bool GetBaseTypeParam(T &param)
+    {
+    }
+    bool CheckResult();
+private:
     MMysqlConnection &conn_;
     MYSQL_STMT *p_stmt_;
     std::vector<MYSQL_BIND> params_;
+    std::vector<std::string> datas_;
+    std::vector<MYSQL_BIND> out_params_;
+    std::vector<std::string> out_datas_;
+    std::vector<unsigned long> out_lengths_;
+    std::vector<my_bool> out_is_nulls_;
+    unsigned int cur_row_;
+    unsigned int cur_col_;
 };
 
 #endif
