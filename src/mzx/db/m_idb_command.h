@@ -51,11 +51,17 @@ public:
     template<typename... Args>
     bool NextRecord(Args&... args)
     {
+        if (!DoBeforeGetParam())
+        {
+            MLOG(Error) << "do before get param failed";
+            return false;
+        }
         return DoGetParam(args...);
     }
 private:
     virtual bool DoPrepair(const std::string &command) = 0;
-    virtual bool DoBeforeAddParam() = 0;
+    virtual bool DoBeforeAddParam() { return true; }
+    virtual bool DoBeforeGetParam() { return true; }
     virtual int DoExecuteNonQuery() = 0;
     virtual bool DoExecuteReader() = 0;
 

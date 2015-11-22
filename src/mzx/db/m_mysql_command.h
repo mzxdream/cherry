@@ -49,7 +49,7 @@ private:
     virtual bool DoGetParam(std::string &param) override;
 private:
     template<typename T>
-    bool AddBaseTypeParam(unsigned int buffer_type, int is_unsigned, const T &param)
+    bool AddBaseTypeParam(enum_field_types buffer_type, int is_unsigned, const T &param)
     {
         datas_.push_back(std::string(""));
         std::string &str = datas_.back();
@@ -69,7 +69,85 @@ private:
     template<typename T>
     bool GetBaseTypeParam(T &param)
     {
+        if (!CheckResult())
+        {
+            return false;
+        }
+        if (cur_col_ >= out_params_.size())
+        {
+            return false;
+        }
+        const MYSQL_BIND &bind = out_params_[cur_col_++];
+        if (*(bind.is_null))
+        {
+            MLOG(Error) << "param is null";
+            return false;
+        }
+        bool ret = false;
+        switch (bind.buffer_type)
+        {
+        case MYSQL_TYPE_TINY:
+            if (bind.is_unsigned)
+            {
+                param = static_cast<T>(*static_cast<uint8_t*>(bind.buffer));
+            }
+            else
+            {
+                param = static_cast<T>(*static_cast<int8_t*>(bind.buffer));
+            }
+            ret = true;
+            break;
+        case MYSQL_TYPE_SHORT:
+            if (bind.is_unsigned)
+            {
+                param = static_cast<T>(*static_cast<uint16_t*>(bind.buffer));
+            }
+            else
+            {
+                param = static_cast<T>(*static_cast<int16_t*>(bind.buffer));
+            }
+            ret = true;
+            break;
+        case MYSQL_TYPE_LONG:
+            if (bind.is_unsigned)
+            {
+                param = static_cast<T>(*static_cast<uint32_t*>(bind.buffer));
+            }
+            else
+            {
+                param = static_cast<T>(*static_cast<int32_t*>(bind.buffer));
+            }
+            ret = true;
+            break;
+        case MYSQL_TYPE_LONGLONG:
+            if (bind.is_unsigned)
+            {
+                param = static_cast<T>(*static_cast<uint64_t*>(bind.buffer));
+            }
+            else
+            {
+                param = static_cast<T>(*static_cast<int64_t*>(bind.buffer));
+            }
+            ret = true;
+            break;
+        case MYSQL_TYPE_FLOAT:
+            param = static_cast<T>(*static_cast<float*>(bind.buffer));
+            ret = true;
+            break;
+        case MYSQL_TYPE_DOUBLE:
+            param = static_cast<T>(*static_cast<double*>(bind.buffer));
+            ret = true;
+            break;
+        default:
+            MLOG(Error) << "can't convert type:" << bind.buffer_type << " to base type";
+            ret = false;
+            break;
+        }
+        return ret;
     }
+    bool BindResult();
+    bool FetchNextRow();
+    bool FetchNextResult();
     bool CheckResult();
 private:
     MMysqlConnection &conn_;
