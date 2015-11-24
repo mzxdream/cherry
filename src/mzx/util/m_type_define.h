@@ -19,6 +19,26 @@ public:
     {
         return data_;
     }
+    std::string& GetString()
+    {
+        return const_cast<std::string&>(static_cast<const MBlob&>(*this).GetString());
+    }
+    const char* GetData() const
+    {
+        return &data_[0];
+    }
+    char* GetData()
+    {
+        return const_cast<char*>(static_cast<const MBlob&>(*this).GetData());
+    }
+    size_t GetSize() const
+    {
+        return data_.size();
+    }
+    void Resize(size_t size)
+    {
+        data_.resize(size);
+    }
 private:
     std::string data_;
 };

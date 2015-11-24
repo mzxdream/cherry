@@ -17,6 +17,7 @@ AUX_SOURCE_DIRECTORY(thread SRC_THREAD)
 AUX_SOURCE_DIRECTORY(3rd/redis SRC_REDIS)
 
 INCLUDE_DIRECTORIES(
+    ./
     ../
     3rd/mysql/
 )
