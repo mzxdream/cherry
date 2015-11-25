@@ -1,6 +1,6 @@
-#include <mzx/db/m_redis_connection.h>
-#include <mzx/db/m_redis_command.h>
-#include <mzx/util/m_string.h>
+#include <db/m_redis_connection.h>
+#include <db/m_redis_command.h>
+#include <util/m_string.h>
 
 MRedisCommand::MRedisCommand(MRedisConnection &conn)
     :conn_(conn)
@@ -25,7 +25,10 @@ MRedisCommand::~MRedisCommand()
 
 bool MRedisCommand::DoPrepair(const std::string &command)
 {
-    args_.push_back(command);
+    args_.resize(1);
+    MBlob &arg = args_.back();
+    arg.Resize(command.size());
+    memcpy(arg.GetData(), command.c_str(), arg.GetSize());
     return true;
 }
 
@@ -51,8 +54,8 @@ int MRedisCommand::DoExecuteNonQuery()
 
     for (size_t i = 0; i < args_.size(); ++i)
     {
-        args[i] = args_[i].c_str();
-        arglens[i] = args_[i].size();
+        args[i] = args_[i].GetData();
+        arglens[i] = args_[i].GetSize();
     }
 
     p_reply_ = static_cast<redisReply*>(redisCommandArgv(conn_.GetConnection(), args_.size(), &args[0], &arglens[0]));
@@ -116,8 +119,8 @@ bool MRedisCommand::DoExecuteReader()
 
     for (size_t i = 0; i < args_.size(); ++i)
     {
-        args[i] = args_[i].c_str();
-        arglens[i] = args_[i].size();
+        args[i] = args_[i].GetData();
+        arglens[i] = args_[i].GetSize();
     }
 
     p_reply_ = static_cast<redisReply*>(redisCommandArgv(conn_.GetConnection(), args_.size(), &args[0], &arglens[0]));
@@ -210,13 +213,16 @@ bool MRedisCommand::DoAddParam(const double &param)
 
 bool MRedisCommand::DoAddParam(const std::string &param)
 {
-    args_.push_back(param);
+    args_.resize(args_.size()+1);
+    MBlob &arg = args_.back();
+    arg.Resize(param.size());
+    memcpy(arg.GetData(), param.c_str(), arg.GetSize());
     return true;
 }
 
 bool MRedisCommand::DoAddParam(const MBlob &param)
 {
-    args_.push_back(param.GetString());
+    args_.push_back(param);
     return true;
 }
 
@@ -298,7 +304,45 @@ bool MRedisCommand::DoGetParam(std::string &param)
     }
     else if (p_reply->type == REDIS_REPLY_STRING)
     {
-        param = p_reply->str;
+        param.resize(p_reply->len);
+        memcpy(&param[0], p_reply->str, param.size());
+    }
+    else
+    {
+        MLOG(Error) << "type:" << p_reply->type << " can't get param";
+        return false;
+    }
+    ++cur_row_;
+    return true;
+}
+
+bool MRedisCommand::DoGetParam(MBlob &param)
+{
+    if (!pp_result_)
+    {
+        MLOG(Error) << "pp_result_ is null";
+        return false;
+    }
+    if (cur_row_ >= row_count_)
+    {
+        MLOG(Error) << "cur row:" << cur_row_ << " is large than row count:" << row_count_;
+        return false;
+    }
+    redisReply *p_reply = pp_result_[cur_row_];
+    if (!p_reply)
+    {
+        MLOG(Error) << "p_reply is null, cur row:" << cur_row_;
+        return false;
+    }
+    if (p_reply->type == REDIS_REPLY_INTEGER)
+    {
+        MLOG(Error) << "convert base type to blob";
+        return false;
+    }
+    else if (p_reply->type == REDIS_REPLY_STRING)
+    {
+        param.Resize(p_reply->len);
+        memcpy(param.GetData(), p_reply->str, param.GetSize());
     }
     else
     {

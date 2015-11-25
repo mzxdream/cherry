@@ -1,8 +1,8 @@
 #ifndef _M_REDIS_CONNECTION_H_
 #define _M_REDIS_CONNECTION_H_
 
-#include <mzx/db/m_idb_connection.h>
-#include <mzx/3rd/redis/hiredis.h>
+#include <db/m_idb_connection.h>
+#include <3rd/redis/hiredis.h>
 #include <string>
 
 class MRedisConnection

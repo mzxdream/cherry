@@ -7,22 +7,11 @@
 class MBlob final
 {
 public:
-    explicit MBlob(const std::string &data)
-        :data_(data)
-    {
-    }
+    MBlob() = default;
     ~MBlob() = default;
     MBlob(const MBlob &) = default;
     MBlob& operator=(const MBlob &) = default;
 public:
-    const std::string& GetString() const
-    {
-        return data_;
-    }
-    std::string& GetString()
-    {
-        return const_cast<std::string&>(static_cast<const MBlob&>(*this).GetString());
-    }
     const char* GetData() const
     {
         return &data_[0];

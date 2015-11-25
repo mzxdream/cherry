@@ -1,8 +1,9 @@
-#include <mzx/db/m_mysql_connection.h>
-#include <mzx/db/m_mysql_command.h>
-#include <mzx/util/m_log.h>
-#include <mzx/util/m_convert.h>
-#include <mzx/util/m_string.h>
+#include <db/m_mysql_connection.h>
+#include <db/m_mysql_command.h>
+#include <db/m_db_conn_string.h>
+#include <util/m_log.h>
+#include <util/m_convert.h>
+#include <util/m_string.h>
 
 static const std::string sc_mysql_sep = ";";
 static const std::string sc_mysql_op = "=";
@@ -59,7 +60,7 @@ bool MMysqlConnection::DoOpen(const std::string &conn_string)
         return false;
     }
     unsigned int timeout = 0;
-    if (MString::GetParamValue(conn_string, sc_mysql_timeout, timeout, sc_mysql_op, sc_mysql_sep, sc_mysql_trim))
+    if (MDbConnString::GetParamValue(conn_string, sc_mysql_timeout, timeout, sc_mysql_op, sc_mysql_sep, sc_mysql_trim))
     {
         if (mysql_options(p_mysql_, MYSQL_OPT_CONNECT_TIMEOUT, &timeout) != 0)
         {
@@ -71,7 +72,7 @@ bool MMysqlConnection::DoOpen(const std::string &conn_string)
     }
 
     char reconnect = 0;
-    if (MString::GetParamValue(conn_string, sc_mysql_reconnect, reconnect, sc_mysql_op, sc_mysql_sep, sc_mysql_trim))
+    if (MDbConnString::GetParamValue(conn_string, sc_mysql_reconnect, reconnect, sc_mysql_op, sc_mysql_sep, sc_mysql_trim))
     {
         if (mysql_options(p_mysql_, MYSQL_OPT_RECONNECT, &reconnect) != 0)
         {
@@ -84,32 +85,32 @@ bool MMysqlConnection::DoOpen(const std::string &conn_string)
 
     std::string ip;
     const char *p_ip = nullptr;
-    if (MString::GetParamValue(conn_string, sc_mysql_ip, ip, sc_mysql_op, sc_mysql_sep, sc_mysql_trim))
+    if (MDbConnString::GetParamValue(conn_string, sc_mysql_ip, ip, sc_mysql_op, sc_mysql_sep, sc_mysql_trim))
     {
         p_ip = ip.c_str();
     }
     unsigned int port = 0;
-    MString::GetParamValue(conn_string, sc_mysql_port, port, sc_mysql_op, sc_mysql_sep, sc_mysql_trim);
+    MDbConnString::GetParamValue(conn_string, sc_mysql_port, port, sc_mysql_op, sc_mysql_sep, sc_mysql_trim);
     std::string user;
     const char *p_user = nullptr;
-    if (MString::GetParamValue(conn_string, sc_mysql_user, user, sc_mysql_op, sc_mysql_sep, sc_mysql_trim))
+    if (MDbConnString::GetParamValue(conn_string, sc_mysql_user, user, sc_mysql_op, sc_mysql_sep, sc_mysql_trim))
     {
         p_user = user.c_str();
     }
     std::string pwd;
     const char *p_pwd = nullptr;
-    if (MString::GetParamValue(conn_string, sc_mysql_pwd, pwd, sc_mysql_op, sc_mysql_sep, sc_mysql_trim))
+    if (MDbConnString::GetParamValue(conn_string, sc_mysql_pwd, pwd, sc_mysql_op, sc_mysql_sep, sc_mysql_trim))
     {
         p_pwd = pwd.c_str();
     }
     std::string db;
     const char *p_db = nullptr;
-    if (MString::GetParamValue(conn_string, sc_mysql_db, db, sc_mysql_op, sc_mysql_sep, sc_mysql_trim))
+    if (MDbConnString::GetParamValue(conn_string, sc_mysql_db, db, sc_mysql_op, sc_mysql_sep, sc_mysql_trim))
     {
         p_db = db.c_str();
     }
     unsigned int client_flag = 0;
-    MString::GetParamValue(conn_string, sc_mysql_client_flag, client_flag, sc_mysql_op, sc_mysql_sep, sc_mysql_trim);
+    MDbConnString::GetParamValue(conn_string, sc_mysql_client_flag, client_flag, sc_mysql_op, sc_mysql_sep, sc_mysql_trim);
 
     if (mysql_real_connect(p_mysql_, p_ip, p_user, p_pwd, p_db, port, nullptr, client_flag) != p_mysql_)
     {
@@ -120,13 +121,13 @@ bool MMysqlConnection::DoOpen(const std::string &conn_string)
     }
 
     std::string charset;
-    if (MString::GetParamValue(conn_string, sc_mysql_charset, charset, sc_mysql_op, sc_mysql_sep, sc_mysql_trim))
+    if (MDbConnString::GetParamValue(conn_string, sc_mysql_charset, charset, sc_mysql_op, sc_mysql_sep, sc_mysql_trim))
     {
         if (mysql_set_character_set(p_mysql_, charset.c_str()) != 0)
         {
             MLOG(Error) << "set charset failed errorno:" << mysql_errno(p_mysql_) << " error:" << mysql_error(p_mysql_);
-        mysql_close(p_mysql_);
-        p_mysql_ = nullptr;
+            mysql_close(p_mysql_);
+            p_mysql_ = nullptr;
             return false;
         }
     }

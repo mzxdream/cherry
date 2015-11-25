@@ -1,13 +1,14 @@
 #ifndef _M_MYSQL_COMMAND_H_
 #define _M_MYSQL_COMMAND_H_
 
-#include <mzx/util/m_log.h>
-#include <mzx/db/m_idb_command.h>
-#include <mzx/util/m_convert.h>
-#include <mzx/3rd/mysql/mysql.h>
+#include <util/m_log.h>
+#include <db/m_idb_command.h>
+#include <util/m_convert.h>
+#include <3rd/mysql/mysql.h>
 #include <string>
 #include <vector>
 #include <cstring>
+#include <util/m_type_define.h>
 
 class MMysqlConnection;
 
@@ -47,19 +48,20 @@ private:
     virtual bool DoGetParam(float &param) override;
     virtual bool DoGetParam(double &param) override;
     virtual bool DoGetParam(std::string &param) override;
+    virtual bool DoGetParam(MBlob &param) override;
 private:
     template<typename T>
-    bool AddBaseTypeParam(enum_field_types buffer_type, int is_unsigned, const T &param)
+    bool AddBaseTypeParam(enum_field_types buffer_type, my_bool is_unsigned, const T &param)
     {
-        datas_.push_back(std::string(""));
-        std::string &str = datas_.back();
-        str.resize(sizeof(param));
-        memcpy(const_cast<char*>(str.c_str()), &param, sizeof(param));
+        datas_.resize(datas_.size()+1);
+        MBlob &data = datas_.back();
+        data.Resize(sizeof(param));
+        memcpy(data.GetData(), &param, data.GetSize());
         MYSQL_BIND bind;
         memset(&bind, 0, sizeof(bind));
         bind.buffer_type = buffer_type;
-        bind.buffer = const_cast<char*>(str.c_str());
-        bind.buffer_length = str.size();
+        bind.buffer = data.GetData();
+        bind.buffer_length = data.GetSize();
         bind.length = nullptr;
         bind.is_null = nullptr;
         bind.is_unsigned = is_unsigned;
@@ -153,9 +155,9 @@ private:
     MMysqlConnection &conn_;
     MYSQL_STMT *p_stmt_;
     std::vector<MYSQL_BIND> params_;
-    std::vector<std::string> datas_;
+    std::vector<MBlob> datas_;
     std::vector<MYSQL_BIND> out_params_;
-    std::vector<std::string> out_datas_;
+    std::vector<MBlob> out_datas_;
     std::vector<unsigned long> out_lengths_;
     std::vector<my_bool> out_is_nulls_;
     unsigned int cur_row_;

@@ -1,8 +1,8 @@
 #ifndef _M_MYSQL_CONNECTION_H_
 #define _M_MYSQL_CONNECTION_H_
 
-#include <mzx/db/m_idb_connection.h>
-#include <mzx/3rd/mysql/mysql.h>
+#include <db/m_idb_connection.h>
+#include <3rd/mysql/mysql.h>
 #include <string>
 
 class MMysqlConnection

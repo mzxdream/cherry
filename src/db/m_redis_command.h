@@ -1,12 +1,14 @@
 #ifndef _M_REDIS_COMMAND_H_
 #define _M_REDIS_COMMAND_H_
 
-#include <mzx/util/m_log.h>
-#include <mzx/db/m_idb_command.h>
-#include <mzx/util/m_convert.h>
-#include <mzx/3rd/redis/hiredis.h>
+#include <util/m_log.h>
+#include <util/m_convert.h>
+#include <util/m_type_define.h>
+#include <db/m_idb_command.h>
+#include <3rd/redis/hiredis.h>
 #include <string>
 #include <vector>
+#include <cstring>
 
 class MRedisConnection;
 
@@ -46,14 +48,15 @@ private:
     virtual bool DoGetParam(float &param) override;
     virtual bool DoGetParam(double &param) override;
     virtual bool DoGetParam(std::string &param) override;
+    virtual bool DoGetParam(MBlob &param) override;
 private:
     template<typename T>
     bool AddBaseTypeParam(const T &param)
     {
-        std::string str;
-        str.resize(sizeof(param));
-        *(static_cast<T*>(static_cast<void*>(const_cast<char*>(str.c_str())))) = param;
-        args_.push_back(str);
+        args_.resize(args_.size()+1);
+        MBlob &arg = args_.back();
+        arg.Resize(sizeof(param));
+        memcpy(arg.GetData(), &param, arg.GetSize());
         return true;
     }
     template<typename T>
@@ -97,7 +100,7 @@ private:
     }
 private:
     MRedisConnection &conn_;
-    std::vector<std::string> args_;
+    std::vector<MBlob> args_;
     redisReply *p_reply_;
     redisReply **pp_result_;
     size_t cur_row_;

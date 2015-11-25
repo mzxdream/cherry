@@ -18,12 +18,11 @@ AUX_SOURCE_DIRECTORY(3rd/redis SRC_REDIS)
 
 INCLUDE_DIRECTORIES(
     ./
-    ../
     3rd/mysql/
 )
 
 LINK_DIRECTORIES(
-    ${PROJECT_SOURCE_DIR}/../../lib
+    ${PROJECT_SOURCE_DIR}/../lib
 )
 
 LINK_LIBRARIES(

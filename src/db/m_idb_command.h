@@ -2,8 +2,8 @@
 #define _M_IDB_COMMAND_H_
 
 #include <string>
-#include <mzx/util/m_type_define.h>
-#include <mzx/util/m_log.h>
+#include <util/m_type_define.h>
+#include <util/m_log.h>
 
 class MIDbCommand
 {
@@ -89,6 +89,7 @@ private:
     virtual bool DoGetParam(float &param) { return false; }
     virtual bool DoGetParam(double &param) { return false; }
     virtual bool DoGetParam(std::string &param) { return false; }
+    virtual bool DoGetParam(MBlob &param){ return false; }
 private:
     template<typename T>
     bool DoAddParam(const T &param)

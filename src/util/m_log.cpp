@@ -1,4 +1,4 @@
-#include <mzx/util/m_log.h>
+#include <util/m_log.h>
 
 MLogHandler* MLogMessage::sp_log_handler_ = &MDefaultLogHandler;
 MLogLevelType MLogMessage::s_listen_level_ = MLogLevelType::Warning;

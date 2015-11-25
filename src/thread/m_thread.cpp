@@ -1,5 +1,5 @@
-#include <mzx/thread/m_thread.h>
-#include <mzx/util/m_log.h>
+#include <thread/m_thread.h>
+#include <util/m_log.h>
 
 MThread::MThread()
     :need_run_(false)

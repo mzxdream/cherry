@@ -1,8 +1,9 @@
-#include <mzx/db/m_redis_connection.h>
-#include <mzx/db/m_redis_command.h>
-#include <mzx/util/m_log.h>
-#include <mzx/util/m_convert.h>
-#include <mzx/util/m_string.h>
+#include <db/m_redis_connection.h>
+#include <db/m_redis_command.h>
+#include <db/m_db_conn_string.h>
+#include <util/m_log.h>
+#include <util/m_convert.h>
+#include <util/m_string.h>
 #include <iostream>
 #include <sys/time.h>
 #include <string>
@@ -75,21 +76,21 @@ bool MRedisConnection::DoOpen(const std::string &conn_string)
     }
 
     std::string ip;
-    if (!MString::GetParamValue(conn_string, sc_redis_ip, ip, sc_redis_op, sc_redis_sep, sc_redis_trim))
+    if (!MDbConnString::GetParamValue(conn_string, sc_redis_ip, ip, sc_redis_op, sc_redis_sep, sc_redis_trim))
     {
         MLOG(Error) << "can't get ip info";
         return false;
     }
 
     int port = 0;
-    if (!MString::GetParamValue(conn_string, sc_redis_port, port, sc_redis_op, sc_redis_sep, sc_redis_trim))
+    if (!MDbConnString::GetParamValue(conn_string, sc_redis_port, port, sc_redis_op, sc_redis_sep, sc_redis_trim))
     {
         MLOG(Error) << "can't get port info";
         return false;
     }
 
     time_t timeout = 0;
-    if (!MString::GetParamValue(conn_string, sc_redis_timeout, timeout, sc_redis_op, sc_redis_sep, sc_redis_trim))
+    if (!MDbConnString::GetParamValue(conn_string, sc_redis_timeout, timeout, sc_redis_op, sc_redis_sep, sc_redis_trim))
     {
         p_redis_ = redisConnect(ip.c_str(), port);
     }
@@ -115,7 +116,7 @@ bool MRedisConnection::DoOpen(const std::string &conn_string)
     }
 
     std::string pwd;
-    if (MString::GetParamValue(conn_string, sc_redis_pwd, pwd, sc_redis_op, sc_redis_sep, sc_redis_trim))
+    if (MDbConnString::GetParamValue(conn_string, sc_redis_pwd, pwd, sc_redis_op, sc_redis_sep, sc_redis_trim))
     {
         if (!AuthPwd(pwd))
         {
@@ -127,7 +128,7 @@ bool MRedisConnection::DoOpen(const std::string &conn_string)
     }
 
     std::string db;
-    if (MString::GetParamValue(conn_string, sc_redis_db, db, sc_redis_op, sc_redis_sep, sc_redis_trim))
+    if (MDbConnString::GetParamValue(conn_string, sc_redis_db, db, sc_redis_op, sc_redis_sep, sc_redis_trim))
     {
         if (!SelectDb(db))
         {

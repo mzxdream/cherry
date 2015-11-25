@@ -3,7 +3,7 @@
 
 #include <sstream>
 #include <string>
-#include <mzx/util/m_type_define.h>
+#include <util/m_type_define.h>
 
 class MConvert
 {
