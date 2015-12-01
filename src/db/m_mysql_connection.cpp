@@ -168,7 +168,7 @@ bool MMysqlConnection::DoCheckConnect()
         return false;
     }
     int result = 0;
-    if (!MConvert::StrToBaseType(std::string(row[0], p_lengths[0]), result)
+    if (!MConvertTo(std::string(row[0], p_lengths[0]), result)
         || result != 2)
     {
         MLOG(Error) << "result is wrong";

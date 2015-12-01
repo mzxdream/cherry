@@ -84,7 +84,7 @@ private:
         }
         else if (p_reply->type == REDIS_REPLY_STRING)
         {
-            if (!MConvert::StrToBaseType(p_reply->str, param))
+            if (!MConvertTo(p_reply->str, param))
             {
                 MLOG(Error) << "convert str to base type failed";
                 return false;

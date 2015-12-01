@@ -296,7 +296,7 @@ bool MRedisCommand::DoGetParam(std::string &param)
     }
     if (p_reply->type == REDIS_REPLY_INTEGER)
     {
-        if (!MConvert::BaseTypeToStr(p_reply->integer, param))
+        if (!MConvertTo(p_reply->integer, param))
         {
             MLOG(Error) << "convert base type to str failed";
             return false;

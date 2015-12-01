@@ -5,21 +5,11 @@
 #include <string>
 #include <util/m_type_define.h>
 
-class MConvert
+template<typename T, typename O>
+inline bool MConvertTo(const T &from, O &to)
 {
-public:
-    template<typename T>
-    static bool StrToBaseType(const std::string &from, T &to)
-    {
-        std::stringstream ss;
-        return (ss << from) && (ss >> to);
-    }
-    template<typename T>
-    static bool BaseTypeToStr(const T &from, std::string &to)
-    {
-        std::stringstream ss;
-        return (ss << from) && (ss >> to);
-    }
-};
+    std::stringstream ss;
+    return (ss << from) && (ss >> to);
+}
 
 #endif

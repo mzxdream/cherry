@@ -15,7 +15,7 @@ public:
         {
             return false;
         }
-        if (!MConvert::StrToBaseType(val_str, val))
+        if (!MConvertTo(val_str, val))
         {
             return false;
         }
