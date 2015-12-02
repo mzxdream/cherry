@@ -3,7 +3,8 @@
 
 #include <string>
 #include <util/m_type_define.h>
-#include <util/m_log.h>
+#include <db/m_db_common.h>
+#include <utility>
 
 class MIDbCommand
 {
@@ -13,55 +14,57 @@ public:
     MIDbCommand(const MIDbCommand &) = delete;
     MIDbCommand& operator=(const MIDbCommand &) = delete;
 public:
-    bool Prepair(const std::string &command)
+    MDbError Prepair(const std::string &command)
     {
         return DoPrepair(command);
     }
     template<typename... Args>
-    int ExecuteNonQuery(const Args&... args)
+    std::pair<unsigned, MDbError> ExecuteNonQuery(const Args&... args)
     {
-        if (!DoBeforeAddParam())
+        unsigned affect = 0;
+        MDbError ret = DoBeforeAddParam();
+        if (ret == MDbError::No)
         {
-            MLOG(Error) << "ExecuteNonQuery DoBeforeAddParam failed";
-            return false;
+            ret = DoAddParam(args...);
+            if (ret == MDbError::No)
+            {
+                return DoExecuteNonQuery();
+            }
         }
-        if (!DoAddParam(args...))
-        {
-            MLOG(Error) << "ExecuteNonQuery DoAddParam failed";
-            return false;
-        }
-        return DoExecuteNonQuery();
-    }
-
-    template<typename... Args>
-    bool ExecuteReader(const Args&... args)
-    {
-        if (!DoBeforeAddParam())
-        {
-            MLOG(Error) << "ExecuteReader DoBeforeAddParam failed";
-            return false;
-        }
-        if (!DoAddParam(args...))
-        {
-            MLOG(Error) << "ExecuteReader DoAddParam failed";
-            return false;
-        }
-        return DoExecuteReader();
+        return std::make_pair(affect, ret);
     }
     template<typename... Args>
-    bool NextRecord(Args&... args)
+    MDbError ExecuteReader(const Args&... args)
     {
-        if (!DoBeforeGetParam())
+        MDbError ret = DoBeforeAddParam();
+        if (ret == MDbError::No)
         {
-            MLOG(Error) << "do before get param failed";
-            return false;
+            ret = DoAddParam(args...);
+            if (ret == MDbError::No)
+            {
+                return DoExecuteReader();
+            }
         }
-        return DoGetParam(args...);
+        return ret;
+    }
+    template<typename... Args>
+    MDbError NextRecord(Args&... args)
+    {
+        MDbError ret = DoGotoNextRecord();
+        if (ret == MDbError::No)
+        {
+            return DoGetParam(args...);
+        }
+        return ret;
+    }
+    MDbError GotoNextResult()
+    {
+        return DoGotoNextResult();
     }
 private:
-    virtual bool DoPrepair(const std::string &command) = 0;
-    virtual bool DoBeforeAddParam() { return true; }
-    virtual bool DoBeforeGetParam() { return true; }
+    virtual MDbError DoPrepair(const std::string &command) = 0;
+    virtual MDbError DoBeforeAddParam() = 0;
+    virtual MDbError DoGotoNextRecord() = 0;
     virtual int DoExecuteNonQuery() = 0;
     virtual bool DoExecuteReader() = 0;
 
