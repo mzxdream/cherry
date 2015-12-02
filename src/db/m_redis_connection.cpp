@@ -1,10 +1,7 @@
 #include <db/m_redis_connection.h>
 #include <db/m_redis_command.h>
-#include <db/m_db_conn_string.h>
-#include <util/m_log.h>
 #include <util/m_convert.h>
 #include <util/m_string.h>
-#include <iostream>
 #include <sys/time.h>
 #include <string>
 
@@ -19,6 +16,7 @@ static const std::string sc_redis_db = "db";
 
 MRedisConnection::MRedisConnection()
     :p_redis_(nullptr)
+    ,last_error_(MDbError::No)
 {
 }
 
@@ -36,57 +34,64 @@ redisContext* MRedisConnection::GetConnection()
     return p_redis_;
 }
 
-bool MRedisConnection::AuthPwd(const std::string &pwd)
+MDbError MRedisConnection::AuthPwd(const std::string &pwd)
 {
+    last_error_ = MDbError::No;
+    last_error_msg_ = "";
     redisReply *p_reply = static_cast<redisReply*>(redisCommand(p_redis_, "AUTH %s", pwd.c_str()));
     if (!p_reply)
     {
-        MLOG(Error) << "auth pwd failed reply is null";
-        return false;
+        last_error_msg_ = "auth pwd failed reply is null";
+        last_error_ = MDbError::Unknown;
+        return last_error_;
     }
     if (p_reply->type == REDIS_REPLY_ERROR
         || (p_reply->type == REDIS_REPLY_STATUS && MString::CompareNoCase(p_reply->str, "OK") != 0))
     {
-        MLOG(Error) << "auth pwd failed error:" << p_reply->str;
+        last_error_msg_ = MConcat("auth pwd failed error:", p_reply->str);
+        last_error_ = MDbError::Unknown;
         freeReplyObject(p_reply);
         p_reply = nullptr;
-        return false;
+        return last_error_;
     }
     freeReplyObject(p_reply);
     p_reply = nullptr;
-    return true;
+    return last_error_;
 }
 
-DbConnParamStyleType MRedisConnection::DoGetParamStyleType()
+MDbConnParamStyleType MRedisConnection::DoGetParamStyleType()
 {
-    return DbConnParamStyleType::CFormat;
+    return MDbConnParamStyleType::CFormat;
 }
 
-DbConnThreadSafetyType MRedisConnection::DoGetThreadSafetyType()
+MDbConnThreadSafetyType MRedisConnection::DoGetThreadSafetyType()
 {
-    return DbConnThreadSafetyType::Connect;
+    return MDbConnThreadSafetyType::Connect;
 }
 
-bool MRedisConnection::DoOpen(const std::string &conn_string)
+MDbError MRedisConnection::DoOpen(const std::string &conn_string)
 {
     if (p_redis_)
     {
-        MLOG(Error) << "redis is not null";
-        return false;
+        last_error_msg_ = "redis is opened";
+        last_error_ = MDbError::ConnectOpened;
+        return last_error_;
     }
 
     std::string ip;
     if (!MDbConnString::GetParamValue(conn_string, sc_redis_ip, ip, sc_redis_op, sc_redis_sep, sc_redis_trim))
     {
-        MLOG(Error) << "can't get ip info";
-        return false;
+        last_error_msg_ = "can't get ip info";
+        last_error_ = MDbError::GetParamFailed;
+        return last_error_;
     }
 
     int port = 0;
     if (!MDbConnString::GetParamValue(conn_string, sc_redis_port, port, sc_redis_op, sc_redis_sep, sc_redis_trim))
     {
-        MLOG(Error) << "can't get port info";
-        return false;
+        last_error_msg_ = "can't get port info";
+        last_error_ = MDbError::GetParamFailed;
+        return last_error_;
     }
 
     time_t timeout = 0;
@@ -104,72 +109,83 @@ bool MRedisConnection::DoOpen(const std::string &conn_string)
 
     if (!p_redis_)
     {
-        MLOG(Error) << "redis connect is null";
-        return false;
+        last_error_msg_ = "redis connect is null";
+        last_error_ = MDbError::ConnectFailed;
+        return last_error_;
     }
-    if (p_redis_->err != REDIS_OK)
+    last_error_ = MDbError::No;
+    last_error_msg_ = "";
+    do
     {
-        MLOG(Error) << "connect error:" << p_redis_->errstr;
+        if (p_redis_->err != REDIS_OK)
+        {
+            last_error_msg_ = MConcat("connect error:", p_redis_->errstr);
+            last_error_ = MDbError::ConnectFailed;
+            break;
+        }
+
+        std::string pwd;
+        if (MDbConnString::GetParamValue(conn_string, sc_redis_pwd, pwd, sc_redis_op, sc_redis_sep, sc_redis_trim))
+        {
+            if (AuthPwd(pwd) != MDbError::No)
+            {
+                break;
+            }
+        }
+
+        std::string db;
+        if (MDbConnString::GetParamValue(conn_string, sc_redis_db, db, sc_redis_op, sc_redis_sep, sc_redis_trim))
+        {
+            if (SelectDb(db) != MDbError::No)
+            {
+                break;
+            }
+        }
+        conn_string_ = conn_string;
+    } while (0);
+    if (last_error_ != MDbError::No)
+    {
         redisFree(p_redis_);
         p_redis_ = nullptr;
-        return false;
     }
-
-    std::string pwd;
-    if (MDbConnString::GetParamValue(conn_string, sc_redis_pwd, pwd, sc_redis_op, sc_redis_sep, sc_redis_trim))
-    {
-        if (!AuthPwd(pwd))
-        {
-            MLOG(Error) << "auth pwd:" << pwd << " failed";
-            redisFree(p_redis_);
-            p_redis_ = nullptr;
-            return false;
-        }
-    }
-
-    std::string db;
-    if (MDbConnString::GetParamValue(conn_string, sc_redis_db, db, sc_redis_op, sc_redis_sep, sc_redis_trim))
-    {
-        if (!SelectDb(db))
-        {
-            MLOG(Error) << "select db:" << db << " failed";
-            redisFree(p_redis_);
-            p_redis_ = nullptr;
-            return false;
-        }
-    }
-    conn_string_ = conn_string;
-    return true;
+    return last_error_;
 }
 
-bool MRedisConnection::DoCheckConnect()
+MDbError MRedisConnection::DoCheckConnect()
 {
+    last_error_ = MDbError::No;
+    last_error_msg_ = "";
     redisReply *p_reply = static_cast<redisReply*>(redisCommand(p_redis_, "PING"));
     if (!p_reply)
     {
-        MLOG(Error) << "ping failed reply is null";
-        return false;
+        last_error_msg_ = "ping failed reply is null";
+        last_error_ = MDbError::QueryFailed;
+        return last_error_;
     }
     if (p_reply->type == REDIS_REPLY_ERROR
         || (p_reply->type == REDIS_REPLY_STATUS && MString::CompareNoCase(p_reply->str, "PONG") != 0))
     {
-        MLOG(Error) << "ping failed error:" << p_reply->str;
+        last_error_msg_ = MConcat("ping failed error:", p_reply->str);
+        last_error_ = MDbError::Disconnect;
         freeReplyObject(p_reply);
         p_reply = nullptr;
-        return false;
+        return last_error_;
     }
     freeReplyObject(p_reply);
     p_reply = nullptr;
-    return true;
+    return last_error_;
 }
 
-bool MRedisConnection::DoCheckAndReconnect()
+MDbError MRedisConnection::DoCheckAndReconnect()
 {
-    if (!CheckConnect())
+    last_error_ = MDbError::No;
+    last_error_msg_ = "";
+    if (CheckConnect() == MDbError::Disconnect)
     {
+        Close();
         return Open(conn_string_);
     }
-    return true;
+    return last_error_;
 }
 
 void MRedisConnection::DoClose()
@@ -181,28 +197,42 @@ void MRedisConnection::DoClose()
     }
 }
 
-bool MRedisConnection::DoSelectDb(const std::string &db)
+MDbError MRedisConnection::DoSelectDb(const std::string &db)
 {
     redisReply *p_reply = static_cast<redisReply*>(redisCommand(p_redis_, "SELECT %s", db.c_str()));
     if (!p_reply)
     {
-        MLOG(Error) << "select db failed reply is null";
-        return false;
+        last_error_msg_ = "select db failed reply is null";
+        last_error_ = MDbError::QueryFailed;
+        return last_error_;
     }
     if (p_reply->type == REDIS_REPLY_ERROR
         || (p_reply->type == REDIS_REPLY_STATUS && MString::CompareNoCase(p_reply->str, "OK") != 0))
     {
-        MLOG(Error) << "select db failed error:" << p_reply->str;
+        last_error_msg_ = MConcat("select db failed error:", p_reply->str);
+        last_error_ = MDbError::Unknown;
         freeReplyObject(p_reply);
         p_reply = nullptr;
-        return false;
+        return last_error_;
     }
     freeReplyObject(p_reply);
     p_reply = nullptr;
-    return true;
+    last_error_ = MDbError::No;
+    last_error_msg_ = "";
+    return last_error_;
 }
 
 MIDbCommand* MRedisConnection::DoCreateCommand()
 {
     return new MRedisCommand(*this);
+}
+
+MDbError MRedisConnection::DoGetLastError()
+{
+    return last_error_;
+}
+
+std::string MRedisConnection::DoGetLastErrorMsg()
+{
+    return last_error_msg_;
 }

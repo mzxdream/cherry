@@ -3,6 +3,27 @@
 
 #include <string>
 #include <strings.h>
+#include <sstream>
+
+template<typename O>
+void _MConcatBase(O &os)
+{
+}
+
+template<typename O, typename T, typename ...Args>
+void _MConcatBase(O &os, const T &val, const Args& ...args)
+{
+    os << val;
+    _MConcatBase(os, args...);
+}
+
+template<typename ...Args>
+std::string MConcat(const Args& ...args)
+{
+    std::stringstream ss;
+    _MConcatBase(ss, args...);
+    return ss.str();
+}
 
 class MString
 {

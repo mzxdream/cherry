@@ -2,7 +2,7 @@
 #define _M_MYSQL_CONNECTION_H_
 
 #include <db/m_idb_connection.h>
-#include <3rd/mysql/mysql.h>
+#include <mysql.h>
 #include <string>
 
 class MMysqlConnection
@@ -14,16 +14,20 @@ public:
 public:
     MYSQL* GetConnection();
 private:
-    virtual DbConnParamStyleType DoGetParamStyleType() override;
-    virtual DbConnThreadSafetyType DoGetThreadSafetyType() override;
-    virtual bool DoOpen(const std::string &conn_string) override;
-    virtual bool DoCheckConnect() override;
-    virtual bool DoCheckAndReconnect() override;//mysql connect string need set reconnect;
+    virtual MDbConnParamStyleType DoGetParamStyleType() override;
+    virtual MDbConnThreadSafetyType DoGetThreadSafetyType() override;
+    virtual MDbError DoOpen(const std::string &conn_string) override;
+    virtual MDbError DoCheckConnect() override;
+    virtual MDbError DoCheckAndReconnect() override;
     virtual void DoClose() override;
-    virtual bool DoSelectDb(const std::string &db) override;
+    virtual MDbError DoSelectDb(const std::string &db) override;
     virtual MIDbCommand* DoCreateCommand() override;
+    virtual MDbError DoGetLastError() override;
+    virtual std::string DoGetLastErrorMsg() override;
 private:
     MYSQL *p_mysql_;
+    MDbError last_error_;
+    std::string last_error_msg_;
 };
 
 #endif

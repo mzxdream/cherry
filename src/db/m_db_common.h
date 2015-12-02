@@ -1,8 +1,23 @@
-#ifndef _M_DB_CONN_STRING_H_
-#define _M_DB_CONN_STRING_H_
+#ifndef _M_DB_COMMON_H_
+#define _M_DB_COMMON_H_
 
 #include <util/m_string.h>
 #include <util/m_convert.h>
+
+enum class MDbError
+{
+    No = 0,
+    Unknown = 1,
+    ConnectOpened = 2,
+    OutOfMemory = 3,
+    SetParamFailed = 4,
+    ConnectFailed = 5,
+    Disconnect = 6,
+    QueryFailed = 7,
+    GetResFailed = 8,
+    GetRowFailed = 9,
+    GetParamFailed = 10,
+};
 
 class MDbConnString
 {

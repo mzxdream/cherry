@@ -2,8 +2,9 @@
 #define _M_IDB_CONNECTION_H_
 
 #include <string>
+#include <db/m_db_common.h>
 
-enum class DbConnThreadSafetyType
+enum class MDbConnThreadSafetyType
 {
     None = 0,
     Model = 1,
@@ -11,7 +12,7 @@ enum class DbConnThreadSafetyType
     Command = 3,
 };
 
-enum class DbConnParamStyleType
+enum class MDbConnParamStyleType
 {
     CFormat = 0,
     QuestionMark = 1,
@@ -27,50 +28,27 @@ public:
     MIDbConnection(const MIDbConnection &) = delete;
     MIDbConnection& operator=(const MIDbConnection &) = delete;
 public:
-    DbConnParamStyleType GetParamStyleType()
-    {
-        return DoGetParamStyleType();
-    }
-    DbConnThreadSafetyType GetThreadSafetyType()
-    {
-        return DoGetThreadSafetyType();
-    }
-    bool Open(const std::string &conn_string)
-    {
-        return DoOpen(conn_string);
-    }
-    bool CheckConnect()
-    {
-        return DoCheckConnect();
-    }
-    bool CheckAndReConnect()
-    {
-        return DoCheckAndReconnect();
-    }
-    void Close()
-    {
-        DoClose();
-    }
-    bool SelectDb(const std::string &db)
-    {
-        return DoSelectDb(db);
-    }
-    MIDbCommand* CreateCommand()
-    {
-        return DoCreateCommand();
-    }
+    MDbConnParamStyleType GetParamStyleType();
+    MDbConnThreadSafetyType GetThreadSafetyType();
+    MDbError Open(const std::string &conn_string);
+    MDbError CheckConnect();
+    MDbError CheckAndReConnect();
+    void Close();
+    MDbError SelectDb(const std::string &db);
+    MIDbCommand* CreateCommand();
+    MDbError GetLastError();
+    std::string GetLastErrorMsg();
 private:
-    virtual DbConnParamStyleType DoGetParamStyleType() = 0;
-    virtual DbConnThreadSafetyType DoGetThreadSafetyType() = 0;
-    virtual bool DoOpen(const std::string &conn_string) = 0;
-    virtual bool DoCheckConnect() = 0;
-    virtual bool DoCheckAndReconnect() = 0;
+    virtual MDbConnParamStyleType DoGetParamStyleType() = 0;
+    virtual MDbConnThreadSafetyType DoGetThreadSafetyType() = 0;
+    virtual MDbError DoOpen(const std::string &conn_string) = 0;
+    virtual MDbError DoCheckConnect() = 0;
+    virtual MDbError DoCheckAndReconnect() = 0;
     virtual void DoClose() = 0;
-    virtual bool DoSelectDb(const std::string &db)
-    {
-        return false;
-    }
+    virtual MDbError DoSelectDb(const std::string &db) = 0;
     virtual MIDbCommand* DoCreateCommand() = 0;
+    virtual MDbError DoGetLastError() = 0;
+    virtual std::string DoGetLastErrorMsg() = 0;
 };
 
 #endif
