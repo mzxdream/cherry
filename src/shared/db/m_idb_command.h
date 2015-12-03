@@ -65,8 +65,9 @@ private:
     virtual MDbError DoPrepair(const std::string &command) = 0;
     virtual MDbError DoBeforeAddParam() = 0;
     virtual MDbError DoGotoNextRecord() = 0;
-    virtual int DoExecuteNonQuery() = 0;
-    virtual bool DoExecuteReader() = 0;
+    virtual MDbError DoGotoNextResult() = 0;
+    virtual std::pair<unsigned, MDbError> DoExecuteNonQuery() = 0;
+    virtual MDbError DoExecuteReader() = 0;
 
     virtual bool DoAddParam(const int8_t &param) { return false; }
     virtual bool DoAddParam(const uint8_t &param) { return false; }
