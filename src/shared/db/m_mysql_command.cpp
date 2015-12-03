@@ -5,7 +5,6 @@
 MMysqlCommand::MMysqlCommand(MMysqlConnection &conn)
     :conn_(conn)
     ,p_stmt_(nullptr)
-    ,cur_row_(0)
     ,cur_col_(0)
 {
 }
@@ -19,7 +18,7 @@ MMysqlCommand::~MMysqlCommand()
     }
 }
 
-bool MMysqlCommand::DoPrepair(const std::string &command)
+MDbError MMysqlCommand::DoPrepair(const std::string &command)
 {
     if (p_stmt_)
     {
@@ -29,224 +28,273 @@ bool MMysqlCommand::DoPrepair(const std::string &command)
     p_stmt_ = mysql_stmt_init(conn_.GetConnection());
     if (!p_stmt_)
     {
-        MLOG(Error) << "init stmt failed errorno:" << mysql_errno(conn_.GetConnection())
-            << "error:" << mysql_error(conn_.GetConnection());
-        return false;
+        last_error_msg_ = MConcat("init stmt failed errorno:", mysql_errno(conn_.GetConnection()), "error:", mysql_error(conn_.GetConnection()));
+        last_error_ = MDbError::Unknown;
+        return last_error_;
     }
     if (mysql_stmt_prepare(p_stmt_, command.c_str(), command.size()) != 0)
     {
-        MLOG(Error) << "mysql prepare " << command << " failed errorno:" << mysql_stmt_errno(p_stmt_)
-            << " error:" << mysql_stmt_error(p_stmt_);
-        return false;
+        last_error_msg_ = MConcat("mysql prepare ", command, " failed errorno:", mysql_stmt_errno(p_stmt_), " error:", mysql_stmt_error(p_stmt_));
+        last_error_ = MDbError::Unknown;
+        return last_error_;
     }
-    return true;
+    last_error_msg_ = "";
+    last_error_ = MDbError::No;
+    return last_error_;
 }
 
-bool MMysqlCommand::DoBeforeAddParam()
+MDbError MMysqlCommand::DoBeforeAddParam()
 {
-    params_.clear();
-    datas_.clear();
-    return true;
+    in_params_.clear();
+    last_error_msg_ = "";
+    last_error_ = MDbError::No;
+    return last_error_;
 }
 
-int MMysqlCommand::DoExecuteNonQuery()
+MDbError MMysqlCommand::DoGotoNextRecord()
+{
+    int ret = mysql_stmt_fetch(p_stmt_);
+    if (ret == 0)
+    {
+        last_error_msg_ = "";
+        last_error_ = MDbError::No;
+        cur_col_ = 0;
+    }
+    else if (ret == MYSQL_NO_DATA)
+    {
+        last_error_msg_ = "have no more data";
+        last_error_ = MDbError::NoData;
+    }
+    else
+    {
+        last_error_msg_ = MConcat("next record errorno:", mysql_stmt_errno(p_stmt_), " error:", mysql_stmt_error(p_stmt_));
+        last_error_ = MDbError::Unknown;
+    }
+    return last_error_;
+}
+
+MDbError MMysqlCommand::DoGotoNextResult()
+{
+    int ret = mysql_stmt_next_result(p_stmt_);
+    if (ret == 0)
+    {
+        return BindResult();
+    }
+    else if (ret < 0)
+    {
+        last_error_msg_ = MConcat("next result ret is ", ret);
+        last_error_ = MDbError::Unknown;
+        return last_error_;
+    }
+    else
+    {
+        last_error_msg_ =  MConcat("next result errorno:", mysql_stmt_errno(p_stmt_), " error:", mysql_stmt_error(p_stmt_));
+        last_error_ = MDbError::Unknown;
+        return last_error_;
+    }
+}
+
+std::pair<unsigned, MDbError> MMysqlCommand::DoExecuteNonQuery()
 {
     int param_count = mysql_stmt_param_count(p_stmt_);
-    if (static_cast<size_t>(param_count) != params_.size())
+    if (static_cast<size_t>(param_count) != in_params_.size())
     {
-        MLOG(Error) << "param count is not match need:" << param_count << " actual is :" << params_.size();
-        return 0;
+        last_error_msg_ = MConcat("param count is not match need:", param_count, " actual is :", in_params_.size());
+        last_error_ = MDbError::ParamCountNotMatch;
+        return std::make_pair(static_cast<unsigned>(0), last_error_);
     }
-    if (mysql_stmt_bind_param(p_stmt_, &params_[0]) != 0)
+    if (mysql_stmt_bind_param(p_stmt_, &in_params_[0]) != 0)
     {
-        MLOG(Error) << "bind failed errorno:" << mysql_stmt_errno(p_stmt_) << " error:" << mysql_stmt_error(p_stmt_);
-        return 0;
+        last_error_msg_ = MConcat("bind failed errorno:", mysql_stmt_errno(p_stmt_), " error:", mysql_stmt_error(p_stmt_));
+        last_error_ = MDbError::Unknown;
+        return std::make_pair(static_cast<unsigned>(0), last_error_);
     }
     if (mysql_stmt_execute(p_stmt_) != 0)
     {
-        MLOG(Error) << "execute failed errorno:" << mysql_stmt_errno(p_stmt_) << " error:" << mysql_stmt_error(p_stmt_);
-        return 0;
+        last_error_msg_ = MConcat("execute failed errorno:", mysql_stmt_errno(p_stmt_), " error:", mysql_stmt_error(p_stmt_));
+        last_error_ = MDbError::Unknown;
+        return std::make_pair(static_cast<unsigned>(0), last_error_);
     }
-    return static_cast<int>(mysql_stmt_affected_rows(p_stmt_));
+    unsigned affect = mysql_stmt_affected_rows(p_stmt_);
+    last_error_msg_ = "";
+    last_error_ = MDbError::No;
+    return std::make_pair(affect, last_error_);
 }
 
-bool MMysqlCommand::DoExecuteReader()
+MDbError MMysqlCommand::DoExecuteReader()
 {
     int param_count = mysql_stmt_param_count(p_stmt_);
-    if (static_cast<size_t>(param_count) != params_.size())
+    if (static_cast<size_t>(param_count) != in_params_.size())
     {
-        MLOG(Error) << "param count is not match need:" << param_count << " actual is :" << params_.size();
-        return false;
+        last_error_msg_ = MConcat("param count is not match need:", param_count, " actual is :", in_params_.size());
+        last_error_ = MDbError::ParamCountNotMatch;
+        return last_error_;
     }
-    if (mysql_stmt_bind_param(p_stmt_, &params_[0]) != 0)
+    if (mysql_stmt_bind_param(p_stmt_, &in_params_[0]) != 0)
     {
-        MLOG(Error) << "bind failed errorno:" << mysql_stmt_errno(p_stmt_) << " error:" << mysql_stmt_error(p_stmt_);
-        return false;
+        last_error_msg_ = MConcat("bind failed errorno:", mysql_stmt_errno(p_stmt_), " error:", mysql_stmt_error(p_stmt_));
+        last_error_ = MDbError::Unknown;
+        return last_error_;
     }
     my_bool update_max_length = 1;
     mysql_stmt_attr_set(p_stmt_, STMT_ATTR_UPDATE_MAX_LENGTH, static_cast<void*>(&update_max_length));
     if (mysql_stmt_execute(p_stmt_) != 0)
     {
-        MLOG(Error) << "execute failed errorno:" << mysql_stmt_errno(p_stmt_) << " error:" << mysql_stmt_error(p_stmt_);
-        return false;
+        last_error_msg_ = MConcat("execute failed errorno:", mysql_stmt_errno(p_stmt_), " error:", mysql_stmt_error(p_stmt_));
+        last_error_ = MDbError::Unknown;
+        return last_error_;
     }
     return BindResult();
 }
 
-bool MMysqlCommand::DoAddParam(const int8_t &param)
+MDbError MMysqlCommand::DoAddParam(const int8_t *p_param)
 {
-    return AddBaseTypeParam(MYSQL_TYPE_TINY, 0, param);
+    return AddParamNumeric(MYSQL_TYPE_TINY, 0, p_param);
 }
 
-bool MMysqlCommand::DoAddParam(const uint8_t &param)
+MDbError MMysqlCommand::DoAddParam(const uint8_t *p_param)
 {
-    return AddBaseTypeParam(MYSQL_TYPE_TINY, 1, param);
+    return AddParamNumeric(MYSQL_TYPE_TINY, 1, p_param);
 }
 
-bool MMysqlCommand::DoAddParam(const int16_t &param)
+MDbError MMysqlCommand::DoAddParam(const int16_t *p_param)
 {
-    return AddBaseTypeParam(MYSQL_TYPE_SHORT, 0, param);
+    return AddParamNumeric(MYSQL_TYPE_SHORT, 0, p_param);
 }
 
-bool MMysqlCommand::DoAddParam(const uint16_t &param)
+MDbError MMysqlCommand::DoAddParam(const uint16_t *p_param)
 {
-    return AddBaseTypeParam(MYSQL_TYPE_SHORT, 1, param);
+    return AddParamNumeric(MYSQL_TYPE_SHORT, 1, p_param);
 }
 
-bool MMysqlCommand::DoAddParam(const int32_t &param)
+MDbError MMysqlCommand::DoAddParam(const int32_t *p_param)
 {
-    return AddBaseTypeParam(MYSQL_TYPE_LONG, 0, param);
+    return AddParamNumeric(MYSQL_TYPE_LONG, 0, p_param);
 }
 
-bool MMysqlCommand::DoAddParam(const uint32_t &param)
+MDbError MMysqlCommand::DoAddParam(const uint32_t *p_param)
 {
-    return AddBaseTypeParam(MYSQL_TYPE_LONG, 1, param);
+    return AddParamNumeric(MYSQL_TYPE_LONG, 1, p_param);
 }
 
-bool MMysqlCommand::DoAddParam(const int64_t &param)
+MDbError MMysqlCommand::DoAddParam(const int64_t *p_param)
 {
-    return AddBaseTypeParam(MYSQL_TYPE_LONGLONG, 0, param);
+    return AddParamNumeric(MYSQL_TYPE_LONGLONG, 0, p_param);
 }
 
-bool MMysqlCommand::DoAddParam(const uint64_t &param)
+MDbError MMysqlCommand::DoAddParam(const uint64_t *p_param)
 {
-    return AddBaseTypeParam(MYSQL_TYPE_LONGLONG, 1, param);
+    return AddParamNumeric(MYSQL_TYPE_LONGLONG, 1, p_param);
 }
 
-bool MMysqlCommand::DoAddParam(const float &param)
+MDbError MMysqlCommand::DoAddParam(const float *p_param)
 {
-    return AddBaseTypeParam(MYSQL_TYPE_FLOAT, 0, param);
+    return AddParamNumeric(MYSQL_TYPE_FLOAT, 0, p_param);
 }
 
-bool MMysqlCommand::DoAddParam(const double &param)
+MDbError MMysqlCommand::DoAddParam(const double *p_param)
 {
-    return AddBaseTypeParam(MYSQL_TYPE_DOUBLE, 0, param);
+    return AddParamNumeric(MYSQL_TYPE_DOUBLE, 0, p_param);
 }
 
-bool MMysqlCommand::DoAddParam(const std::string &param)
+MDbError MMysqlCommand::DoAddParam(const std::string *p_param)
 {
-    datas_.resize(datas_.size()+1);
-    MBlob &data = datas_.back();
-    data.Resize(param.size());
-    memcpy(data.GetData(), param.c_str(), data.GetSize());
     MYSQL_BIND bind;
     memset(&bind, 0, sizeof(bind));
     bind.buffer_type = MYSQL_TYPE_VAR_STRING;
-    bind.buffer = data.GetData();
-    bind.buffer_length = data.GetSize();
+    bind.buffer = const_cast<char*>(&((*p_param)[0]));
+    bind.buffer_length = p_param->size();
     bind.length = nullptr;
     bind.is_null = nullptr;
     bind.is_unsigned = 0;
-    params_.push_back(bind);
-    return true;
+    in_params_.push_back(bind);
+    last_error_msg_ = "";
+    last_error_ = MDbError::No;
+    return last_error_;
 }
 
-bool MMysqlCommand::DoAddParam(const MBlob &param)
+MDbError MMysqlCommand::DoAddParam(const MBlob *p_param)
 {
-    datas_.push_back(param);
-    MBlob &data = datas_.back();
     MYSQL_BIND bind;
     memset(&bind, 0, sizeof(bind));
     bind.buffer_type = MYSQL_TYPE_BLOB;
-    bind.buffer = data.GetData();
-    bind.buffer_length = data.GetSize();
+    bind.buffer = const_cast<char*>(p_param->GetData());
+    bind.buffer_length = p_param->GetSize();
     bind.length = nullptr;
     bind.is_null = nullptr;
     bind.is_unsigned = 0;
-    params_.push_back(bind);
-    return true;
+    in_params_.push_back(bind);
+    last_error_msg_ = "";
+    last_error_ = MDbError::No;
+    return last_error_;
 }
 
-bool MMysqlCommand::DoGetParam(int8_t &param)
+MDbError MMysqlCommand::DoGetParam(int8_t *p_param)
 {
-    return CheckResult() && GetBaseTypeParam(param);
+    return GetParamNumeric(p_param);
 }
 
-bool MMysqlCommand::DoGetParam(uint8_t &param)
+MDbError MMysqlCommand::DoGetParam(uint8_t *p_param)
 {
-    return CheckResult() && GetBaseTypeParam(param);
+    return GetParamNumeric(p_param);
 }
 
-bool MMysqlCommand::DoGetParam(int16_t &param)
+MDbError MMysqlCommand::DoGetParam(int16_t *p_param)
 {
-    return CheckResult() && GetBaseTypeParam(param);
+    return GetParamNumeric(p_param);
 }
 
-bool MMysqlCommand::DoGetParam(uint16_t &param)
+MDbError MMysqlCommand::DoGetParam(uint16_t *p_param)
 {
-    return CheckResult() && GetBaseTypeParam(param);
+    return GetParamNumeric(p_param);
 }
 
-bool MMysqlCommand::DoGetParam(int32_t &param)
+MDbError MMysqlCommand::DoGetParam(int32_t *p_param)
 {
-    return CheckResult() && GetBaseTypeParam(param);
+    return GetParamNumeric(p_param);
 }
 
-bool MMysqlCommand::DoGetParam(uint32_t &param)
+MDbError MMysqlCommand::DoGetParam(uint32_t *p_param)
 {
-    return CheckResult() && GetBaseTypeParam(param);
+    return GetParamNumeric(p_param);
 }
 
-bool MMysqlCommand::DoGetParam(int64_t &param)
+MDbError MMysqlCommand::DoGetParam(int64_t *p_param)
 {
-    return CheckResult() && GetBaseTypeParam(param);
+    return GetParamNumeric(p_param);
 }
 
-bool MMysqlCommand::DoGetParam(uint64_t &param)
+MDbError MMysqlCommand::DoGetParam(uint64_t *p_param)
 {
-    return CheckResult() && GetBaseTypeParam(param);
+    return GetParamNumeric(p_param);
 }
 
-bool MMysqlCommand::DoGetParam(float &param)
+MDbError MMysqlCommand::DoGetParam(float *p_param)
 {
-    return CheckResult() && GetBaseTypeParam(param);
+    return GetParamNumeric(p_param);
 }
 
-bool MMysqlCommand::DoGetParam(double &param)
+MDbError MMysqlCommand::DoGetParam(double *p_param)
 {
-    return CheckResult() && GetBaseTypeParam(param);
+    return GetParamNumeric(p_param);
 }
 
-bool MMysqlCommand::DoGetParam(std::string &param)
+MDbError MMysqlCommand::DoGetParam(std::string *p_param)
 {
-    if (!CheckResult())
-    {
-        return false;
-    }
     if (cur_col_ >= out_params_.size())
     {
-        return false;
+        last_error_msg_ = "record have no data";
+        last_error_ = MDbError::NoData;
+        return last_error_;
     }
     const MYSQL_BIND &bind = out_params_[cur_col_++];
-    if (*(bind.is_null))
+    if (*(bind.is_null)
+            || bind.buffer_type == MYSQL_TYPE_NULL)
     {
-        param = "";
-        return true;
-    }
-    if (bind.buffer_type == MYSQL_TYPE_NULL)
-    {
-        param = "";
-        return true;
+        last_error_msg_ = "";
+        last_error_ = MDbError::No;
+        *p_param = "";
+        return last_error_;
     }
     if (bind.buffer_type == MYSQL_TYPE_TINY_BLOB
         || bind.buffer_type == MYSQL_TYPE_MEDIUM_BLOB
@@ -255,34 +303,33 @@ bool MMysqlCommand::DoGetParam(std::string &param)
         || bind.buffer_type == MYSQL_TYPE_STRING
         || bind.buffer_type == MYSQL_TYPE_VAR_STRING)
     {
-        param.resize(*(bind.length));
-        memcpy(&param[0], bind.buffer, param.size());
-        return true;
+        p_param->resize(*(bind.length));
+        memcpy(&((*p_param)[0]), bind.buffer, p_param->size());
+        last_error_msg_ = "";
+        last_error_ = MDbError::No;
+        return last_error_;
     }
-    MLOG(Error) << "can't convert type:" << bind.buffer_type << " to string";
-    return false;
+    last_error_msg_ = MConcat("can't convert type:", bind.buffer_type, " to string");
+    last_error_ = MDbError::ParamCannotConvert;
+    return last_error_;
 }
 
-bool MMysqlCommand::DoGetParam(MBlob &param)
+MDbError MMysqlCommand::DoGetParam(MBlob *p_param)
 {
-    if (!CheckResult())
-    {
-        return false;
-    }
     if (cur_col_ >= out_params_.size())
     {
-        return false;
+        last_error_msg_ = "record have no data";
+        last_error_ = MDbError::NoData;
+        return last_error_;
     }
     const MYSQL_BIND &bind = out_params_[cur_col_++];
-    if (*(bind.is_null))
+    if (*(bind.is_null)
+            || bind.buffer_type == MYSQL_TYPE_NULL)
     {
-        param.Resize(0);
-        return true;
-    }
-    if (bind.buffer_type == MYSQL_TYPE_NULL)
-    {
-        param.Resize(0);
-        return true;
+        last_error_msg_ = "";
+        last_error_ = MDbError::No;
+        p_param->Resize(0);
+        return last_error_;
     }
     if (bind.buffer_type == MYSQL_TYPE_TINY_BLOB
         || bind.buffer_type == MYSQL_TYPE_MEDIUM_BLOB
@@ -291,42 +338,48 @@ bool MMysqlCommand::DoGetParam(MBlob &param)
         || bind.buffer_type == MYSQL_TYPE_STRING
         || bind.buffer_type == MYSQL_TYPE_VAR_STRING)
     {
-        param.Resize(*(bind.length));
-        memcpy(param.GetData(), bind.buffer, param.GetSize());
-        return true;
+        p_param->Resize(*(bind.length));
+        memcpy(p_param->GetData(), bind.buffer, p_param->GetSize());
+        last_error_msg_ = "";
+        last_error_ = MDbError::No;
+        return last_error_;
     }
-    MLOG(Error) << "can't convert type:" << bind.buffer_type << " to MBlob";
-    return false;
+    last_error_msg_ = MConcat("can't convert type:", bind.buffer_type, " to MBlob");
+    last_error_ = MDbError::ParamCannotConvert;
+    return last_error_;
 }
 
-bool MMysqlCommand::BindResult()
+MDbError MMysqlCommand::BindResult()
 {
     if (mysql_stmt_store_result(p_stmt_) != 0)
     {
-        MLOG(Error) << "store result failed errorno:" << mysql_stmt_errno(p_stmt_)
-            << " error:" << mysql_stmt_error(p_stmt_);
-        return false;
+        last_error_msg_ = MConcat("store result failed errorno:", mysql_stmt_errno(p_stmt_), " error:", mysql_stmt_error(p_stmt_));
+        last_error_ = MDbError::Unknown;
+        return last_error_;
     }
     MYSQL_RES *p_meta_res = mysql_stmt_result_metadata(p_stmt_);
     if (!p_meta_res)
     {
-        MLOG(Error) << "have not meta res errorno:" << mysql_stmt_errno(p_stmt_)
-            << " error:" << mysql_stmt_error(p_stmt_);
-        return false;
+        last_error_msg_ = MConcat("have not meta res errorno:", mysql_stmt_errno(p_stmt_), " error:", mysql_stmt_error(p_stmt_));
+        last_error_ = MDbError::Unknown;
+        return last_error_;
     }
-    bool ret = false;
+    last_error_msg_ = "";
+    last_error_ = MDbError::No;
     do
     {
         MYSQL_FIELD *p_field_list = mysql_fetch_fields(p_meta_res);
         if (!p_field_list)
         {
-            MLOG(Error) << "mysql_fetch_fields is null unknown error";
-            break;
+           last_error_msg_ = "mysql_fetch_fields is null unknown error";
+           last_error_ = MDbError::Unknown;
+           break;
         }
         unsigned long field_count = mysql_num_fields(p_meta_res);
         if (field_count == 0)
         {
-            MLOG(Error) << "mysql field_count is 0";
+            last_error_msg_ = "mysql field_count is 0";
+            last_error_ = MDbError::Unknown;
             break;
         }
         out_params_.resize(field_count);
@@ -348,68 +401,11 @@ bool MMysqlCommand::BindResult()
         }
         if (mysql_stmt_bind_result(p_stmt_, &out_params_[0]) != 0)
         {
-            MLOG(Error) << "bind result failed errorno:" << mysql_stmt_errno(p_stmt_)
-                << " error:" << mysql_stmt_error(p_stmt_);
+            last_error_msg_ = MConcat("bind result failed errorno:", mysql_stmt_errno(p_stmt_), " error:", mysql_stmt_error(p_stmt_));
+            last_error_ = MDbError::Unknown;
             break;
         }
-        cur_row_ = 0;
-        cur_col_ = 0;
-        ret = true;
     } while (0);
     mysql_free_result(p_meta_res);
-    return ret;
+    return last_error_;
 }
-
-bool MMysqlCommand::FetchNextResult()
-{
-    int ret = mysql_stmt_next_result(p_stmt_);
-    if (ret == 0)
-    {
-        return BindResult();
-    }
-    else if (ret < 0)
-    {
-        return false;
-    }
-    else
-    {
-        MLOG(Error) << "failed to get next result errorno:" << mysql_stmt_errno(p_stmt_)
-            << " error:" << mysql_stmt_error(p_stmt_);
-        return false;
-    }
-}
-
-bool MMysqlCommand::FetchNextRow()
-{
-    int ret = mysql_stmt_fetch(p_stmt_);
-    if (ret == 0)
-    {
-        return true;
-    }
-    else if (ret == MYSQL_NO_DATA)
-    {
-        FetchNextResult();
-        return false;
-    }
-    else
-    {
-        MLOG(Error) << "fetch errorno:" << mysql_stmt_errno(p_stmt_) << " error:" << mysql_stmt_error(p_stmt_);
-        return false;
-    }
-}
-
-bool MMysqlCommand::CheckResult()
-{
-    if (cur_row_ == 0
-        || cur_col_ >= out_params_.size())
-    {
-        if (!FetchNextRow())
-        {
-            return false;
-        }
-        ++cur_row_;
-        cur_col_ = 0;
-    }
-    return true;
-}
-

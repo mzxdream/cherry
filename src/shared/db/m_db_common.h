@@ -18,6 +18,9 @@ enum class MDbError
     GetRowFailed = 9,
     GetParamFailed = 10,
     TypeNotSupport = 11,
+    NoData = 12,
+    ParamCountNotMatch = 13,
+    ParamCannotConvert = 14,
 };
 
 class MDbConnString

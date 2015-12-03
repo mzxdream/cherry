@@ -50,7 +50,7 @@ private:
     virtual void DoClose() = 0;
     virtual MDbError DoSelectDb(const std::string &db) = 0;
     virtual MIDbCommand* DoCreateCommand() = 0;
-private:
+protected:
     MDbError last_error_;
     std::string last_error_msg_;
 };

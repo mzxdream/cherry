@@ -56,7 +56,7 @@ public:
         }
         return ret;
     }
-    MDbError GotoNextResult() { return DoGotoNextResult(); }
+    MDbError NextResult() { return DoGotoNextResult(); }
     MDbError GetLastError() const { return last_error_; }
     const std::string& GetLastErrorMsg() const { return last_error_msg_; }
 private:
@@ -67,18 +67,18 @@ private:
     virtual std::pair<unsigned, MDbError> DoExecuteNonQuery() = 0;
     virtual MDbError DoExecuteReader() = 0;
 
-    virtual MDbError DoAddParam(int8_t *p_param) = 0;
-    virtual MDbError DoAddParam(uint8_t *p_param) = 0;
-    virtual MDbError DoAddParam(int16_t *p_param) = 0;
-    virtual MDbError DoAddParam(uint16_t *p_param) = 0;
-    virtual MDbError DoAddParam(int32_t *p_param) = 0;
-    virtual MDbError DoAddParam(uint32_t *p_param) = 0;
-    virtual MDbError DoAddParam(int64_t *p_param) = 0;
-    virtual MDbError DoAddParam(uint64_t *p_param) = 0;
-    virtual MDbError DoAddParam(float *p_param) = 0;
-    virtual MDbError DoAddParam(double *p_param) = 0;
-    virtual MDbError DoAddParam(std::string *p_param) = 0;
-    virtual MDbError DoAddParam(MBlob *p_param) = 0;
+    virtual MDbError DoAddParam(const int8_t *p_param) = 0;
+    virtual MDbError DoAddParam(const uint8_t *p_param) = 0;
+    virtual MDbError DoAddParam(const int16_t *p_param) = 0;
+    virtual MDbError DoAddParam(const uint16_t *p_param) = 0;
+    virtual MDbError DoAddParam(const int32_t *p_param) = 0;
+    virtual MDbError DoAddParam(const uint32_t *p_param) = 0;
+    virtual MDbError DoAddParam(const int64_t *p_param) = 0;
+    virtual MDbError DoAddParam(const uint64_t *p_param) = 0;
+    virtual MDbError DoAddParam(const float *p_param) = 0;
+    virtual MDbError DoAddParam(const double *p_param) = 0;
+    virtual MDbError DoAddParam(const std::string *p_param) = 0;
+    virtual MDbError DoAddParam(const MBlob *p_param) = 0;
 
     virtual MDbError DoGetParam(int8_t *p_param) = 0;
     virtual MDbError DoGetParam(uint8_t *p_param) = 0;
@@ -105,7 +105,7 @@ private:
     {
         return DoGetParam(param) && GetParams(args...);
     }
-private:
+protected:
     MDbError last_error_;
     std::string last_error_msg_;
 };
