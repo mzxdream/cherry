@@ -24,13 +24,9 @@ private:
     virtual void DoClose() override;
     virtual MDbError DoSelectDb(const std::string &db) override;
     virtual MIDbCommand* DoCreateCommand() override;
-    virtual MDbError DoGetLastError() override;
-    virtual std::string DoGetLastErrorMsg() override;
 private:
     redisContext *p_redis_;
     std::string conn_string_;
-    MDbError last_error_;
-    std::string last_error_msg_;
 };
 
 #endif

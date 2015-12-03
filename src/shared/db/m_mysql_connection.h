@@ -22,12 +22,8 @@ private:
     virtual void DoClose() override;
     virtual MDbError DoSelectDb(const std::string &db) override;
     virtual MIDbCommand* DoCreateCommand() override;
-    virtual MDbError DoGetLastError() override;
-    virtual std::string DoGetLastErrorMsg() override;
 private:
     MYSQL *p_mysql_;
-    MDbError last_error_;
-    std::string last_error_msg_;
 };
 
 #endif

@@ -23,21 +23,24 @@ class MIDbCommand;
 class MIDbConnection
 {
 public:
-    MIDbConnection() = default;
+    MIDbConnection()
+        :last_error_(MDbError::No)
+    {
+    }
     virtual ~MIDbConnection() = default;
     MIDbConnection(const MIDbConnection &) = delete;
     MIDbConnection& operator=(const MIDbConnection &) = delete;
 public:
-    MDbConnParamStyleType GetParamStyleType();
-    MDbConnThreadSafetyType GetThreadSafetyType();
-    MDbError Open(const std::string &conn_string);
-    MDbError CheckConnect();
-    MDbError CheckAndReConnect();
-    void Close();
-    MDbError SelectDb(const std::string &db);
-    MIDbCommand* CreateCommand();
-    MDbError GetLastError();
-    std::string GetLastErrorMsg();
+    MDbConnParamStyleType GetParamStyleType() { return DoGetParamStyleType(); }
+    MDbConnThreadSafetyType GetThreadSafetyType() { return DoGetThreadSafetyType(); }
+    MDbError Open(const std::string &conn_string) { return DoOpen(conn_string); }
+    MDbError CheckConnect() { return DoCheckConnect(); }
+    MDbError CheckAndReConnect() { return DoCheckAndReconnect(); }
+    void Close() { return DoClose(); }
+    MDbError SelectDb(const std::string &db) { return DoSelectDb(db); }
+    MIDbCommand* CreateCommand() { return DoCreateCommand(); }
+    MDbError GetLastError() const { return last_error_; }
+    const std::string& GetLastErrorMsg() const { return last_error_msg_; }
 private:
     virtual MDbConnParamStyleType DoGetParamStyleType() = 0;
     virtual MDbConnThreadSafetyType DoGetThreadSafetyType() = 0;
@@ -47,8 +50,9 @@ private:
     virtual void DoClose() = 0;
     virtual MDbError DoSelectDb(const std::string &db) = 0;
     virtual MIDbCommand* DoCreateCommand() = 0;
-    virtual MDbError DoGetLastError() = 0;
-    virtual std::string DoGetLastErrorMsg() = 0;
+private:
+    MDbError last_error_;
+    std::string last_error_msg_;
 };
 
 #endif

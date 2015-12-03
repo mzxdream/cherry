@@ -17,7 +17,6 @@ static const std::string sc_mysql_client_flag = "clientflag";
 
 MMysqlConnection::MMysqlConnection()
     :p_mysql_(nullptr)
-    ,last_error_(MDbError::No)
 {
 }
 

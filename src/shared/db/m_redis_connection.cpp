@@ -16,7 +16,6 @@ static const std::string sc_redis_db = "db";
 
 MRedisConnection::MRedisConnection()
     :p_redis_(nullptr)
-    ,last_error_(MDbError::No)
 {
 }
 
@@ -225,14 +224,4 @@ MDbError MRedisConnection::DoSelectDb(const std::string &db)
 MIDbCommand* MRedisConnection::DoCreateCommand()
 {
     return new MRedisCommand(*this);
-}
-
-MDbError MRedisConnection::DoGetLastError()
-{
-    return last_error_;
-}
-
-std::string MRedisConnection::DoGetLastErrorMsg()
-{
-    return last_error_msg_;
 }
