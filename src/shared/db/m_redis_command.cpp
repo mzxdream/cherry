@@ -23,22 +23,42 @@ MRedisCommand::~MRedisCommand()
     row_count_ = 0;
 }
 
-bool MRedisCommand::DoPrepair(const std::string &command)
+MDbError MRedisCommand::DoPrepair(const std::string &command)
 {
-    args_.resize(1);
-    MBlob &arg = args_.back();
-    arg.Resize(command.size());
-    memcpy(arg.GetData(), command.c_str(), arg.GetSize());
-    return true;
+    command_ = command;
+    in_params_.clear();
+    in_param_lens_.clear();
+    in_params_.push_back(&command_[0]);
+    in_param_lens_.push_back(command_.size());
+    last_error_msg_ = "";
+    last_error_ = MDbError::No;
+    return last_error_;
 }
 
-bool MRedisCommand::DoBeforeAddParam()
+MDbError MRedisCommand::DoBeforeAddParam()
 {
-    args_.resize(1);
-    return true;
+    in_params_.resize(1);
+    in_param_lens_.resize(1);
+    last_error_msg_ = "";
+    last_error_ = MDbError::No;
+    return last_error_;
 }
 
-int MRedisCommand::DoExecuteNonQuery()
+MDbError MRedisCommand::DoGotoNextRecord()
+{
+    last_error_msg_ = "";
+    last_error_ = MDbError::No;
+    return last_error_;
+}
+
+MDbError MRedisCommand::DoGotoNextResult()
+{
+    last_error_msg_ = "";
+    last_error_ = MDbError::No;
+    return last_error_;
+}
+
+std::pair<unsigned, MDbError> MRedisCommand::DoExecuteNonQuery()
 {
     if (p_reply_)
     {
@@ -49,37 +69,33 @@ int MRedisCommand::DoExecuteNonQuery()
     cur_row_ = 0;
     row_count_ = 0;
 
-    std::vector<const char*> args(args_.size());
-    std::vector<size_t> arglens(args_.size());
-
-    for (size_t i = 0; i < args_.size(); ++i)
-    {
-        args[i] = args_[i].GetData();
-        arglens[i] = args_[i].GetSize();
-    }
-
-    p_reply_ = static_cast<redisReply*>(redisCommandArgv(conn_.GetConnection(), args_.size(), &args[0], &arglens[0]));
+    p_reply_ = static_cast<redisReply*>(redisCommandArgv(conn_.GetConnection(), in_params_.size(), &in_params_[0], &in_param_lens_[0]));
 
     if (!p_reply_)
     {
-        MLOG(Error) << "DoExecute failed reply is null";
-        return false;
+        last_error_msg_ = "Execute failed reply is null";
+        last_error_ = MDbError::Unknown;
+        return std::make_pair(static_cast<unsigned>(0), last_error_);
     }
     if (p_reply_->type == REDIS_REPLY_ERROR)
     {
-        MLOG(Error) << "DoExecute failed reply error:" << p_reply_->str;
-        return false;
+        last_error_msg_ = MConcat("Execute failed reply error:", p_reply_->str);
+        last_error_ = MDbError::Unknown;
+        return std::make_pair(static_cast<unsigned>(0), last_error_);
     }
     else if (p_reply_->type == REDIS_REPLY_NIL)
     {
-        return true;
+        last_error_msg_ = "";
+        last_error_ = MDbError::No;
+        return std::make_pair(static_cast<unsigned>(0), last_error_);
     }
     else if (p_reply_->type == REDIS_REPLY_STATUS)
     {
         if (MString::CompareNoCase(p_reply_->str, "OK") != 0)
         {
-            MLOG(Error) << "status is failed error:" << p_reply_->str;
-            return false;
+            last_error_msg_ = MConcat("status is failed error:", p_reply_->str);
+            last_error_ = MDbError::Unknown;
+            return std::make_pair(static_cast<unsigned>(0), last_error_);
         }
     }
     else if (p_reply_->type == REDIS_REPLY_INTEGER
@@ -94,16 +110,12 @@ int MRedisCommand::DoExecuteNonQuery()
         row_count_ = p_reply_->elements;
     }
 
-    int ret = 0;
-    if (!NextRecord(ret))
-    {
-        MLOG(Error) << "get ret failed";
-        return 0;
-    }
-    return ret;
+    unsigned ret = 0;
+    last_error_ = NextRecord(&ret);
+    return std::make_pair(ret, last_error_);
 }
 
-bool MRedisCommand::DoExecuteReader()
+MDbError MRedisCommand::DoExecuteReader()
 {
     if (p_reply_)
     {
@@ -114,37 +126,33 @@ bool MRedisCommand::DoExecuteReader()
     cur_row_ = 0;
     row_count_ = 0;
 
-    std::vector<const char*> args(args_.size());
-    std::vector<size_t> arglens(args_.size());
-
-    for (size_t i = 0; i < args_.size(); ++i)
-    {
-        args[i] = args_[i].GetData();
-        arglens[i] = args_[i].GetSize();
-    }
-
-    p_reply_ = static_cast<redisReply*>(redisCommandArgv(conn_.GetConnection(), args_.size(), &args[0], &arglens[0]));
+    p_reply_ = static_cast<redisReply*>(redisCommandArgv(conn_.GetConnection(), in_params_.size(), &in_params_[0], &in_param_lens_[0]));
 
     if (!p_reply_)
     {
-        MLOG(Error) << "DoExecute failed reply is null";
-        return false;
+        last_error_msg_ = "Execute failed reply is null";
+        last_error_ = MDbError::Unknown;
+        return last_error_;
     }
     if (p_reply_->type == REDIS_REPLY_ERROR)
     {
-        MLOG(Error) << "DoExecute failed reply error:" << p_reply_->str;
-        return false;
+        last_error_msg_ = MConcat("Execute failed reply error:", p_reply_->str);
+        last_error_ = MDbError::Unknown;
+        return last_error_;
     }
     else if (p_reply_->type == REDIS_REPLY_NIL)
     {
-        return true;
+        last_error_msg_ = "";
+        last_error_ = MDbError::No;
+        return last_error_;
     }
     else if (p_reply_->type == REDIS_REPLY_STATUS)
     {
         if (MString::CompareNoCase(p_reply_->str, "OK") != 0)
         {
-            MLOG(Error) << "status is failed error:" << p_reply_->str;
-            return false;
+            last_error_msg_ = MConcat("status is failed error:", p_reply_->str);
+            last_error_ = MDbError::Unknown;
+            return last_error_;
         }
     }
     else if (p_reply_->type == REDIS_REPLY_INTEGER
@@ -158,197 +166,210 @@ bool MRedisCommand::DoExecuteReader()
         pp_result_ = p_reply_->element;
         row_count_ = p_reply_->elements;
     }
-    return true;
+    last_error_msg_ = "";
+    last_error_ = MDbError::No;
+    return last_error_;
 }
 
-bool MRedisCommand::DoAddParam(const int8_t &param)
+MDbError MRedisCommand::DoAddParam(const int8_t *p_param)
 {
-    return AddBaseTypeParam(param);
+    return AddParamNumeric(p_param);
 }
 
-bool MRedisCommand::DoAddParam(const uint8_t &param)
+MDbError MRedisCommand::DoAddParam(const uint8_t *p_param)
 {
-    return AddBaseTypeParam(param);
+    return AddParamNumeric(p_param);
 }
 
-bool MRedisCommand::DoAddParam(const int16_t &param)
+MDbError MRedisCommand::DoAddParam(const int16_t *p_param)
 {
-    return AddBaseTypeParam(param);
+    return AddParamNumeric(p_param);
 }
 
-bool MRedisCommand::DoAddParam(const uint16_t &param)
+MDbError MRedisCommand::DoAddParam(const uint16_t *p_param)
 {
-    return AddBaseTypeParam(param);
+    return AddParamNumeric(p_param);
 }
 
-bool MRedisCommand::DoAddParam(const int32_t &param)
+MDbError MRedisCommand::DoAddParam(const int32_t *p_param)
 {
-    return AddBaseTypeParam(param);
+    return AddParamNumeric(p_param);
 }
 
-bool MRedisCommand::DoAddParam(const uint32_t &param)
+MDbError MRedisCommand::DoAddParam(const uint32_t *p_param)
 {
-    return AddBaseTypeParam(param);
+    return AddParamNumeric(p_param);
 }
 
-bool MRedisCommand::DoAddParam(const int64_t &param)
+MDbError MRedisCommand::DoAddParam(const int64_t *p_param)
 {
-    return AddBaseTypeParam(param);
+    return AddParamNumeric(p_param);
 }
 
-bool MRedisCommand::DoAddParam(const uint64_t &param)
+MDbError MRedisCommand::DoAddParam(const uint64_t *p_param)
 {
-    return AddBaseTypeParam(param);
+    return AddParamNumeric(p_param);
 }
 
-bool MRedisCommand::DoAddParam(const float &param)
+MDbError MRedisCommand::DoAddParam(const float *p_param)
 {
-    return AddBaseTypeParam(param);
+    return AddParamNumeric(p_param);
 }
 
-bool MRedisCommand::DoAddParam(const double &param)
+MDbError MRedisCommand::DoAddParam(const double *p_param)
 {
-    return AddBaseTypeParam(param);
+    return AddParamNumeric(p_param);
 }
 
-bool MRedisCommand::DoAddParam(const std::string &param)
+MDbError MRedisCommand::DoAddParam(const std::string *p_param)
 {
-    args_.resize(args_.size()+1);
-    MBlob &arg = args_.back();
-    arg.Resize(param.size());
-    memcpy(arg.GetData(), param.c_str(), arg.GetSize());
-    return true;
+    in_params_.push_back(&((*p_param)[0]));
+    in_param_lens_.push_back(p_param->size());
+    last_error_msg_ = "";
+    last_error_ = MDbError::No;
+    return last_error_;
 }
 
-bool MRedisCommand::DoAddParam(const MBlob &param)
+MDbError MRedisCommand::DoAddParam(const MBlob *p_param)
 {
-    args_.push_back(param);
-    return true;
+    in_params_.push_back(p_param->GetData());
+    in_param_lens_.push_back(p_param->GetSize());
+    last_error_msg_ = "";
+    last_error_ = MDbError::No;
+    return last_error_;
 }
 
-bool MRedisCommand::DoGetParam(int8_t &param)
+MDbError MRedisCommand::DoGetParam(int8_t *p_param)
 {
-    return GetBaseTypeParam(param);
+    return GetParamNumeric(p_param);
 }
 
-bool MRedisCommand::DoGetParam(uint8_t &param)
+MDbError MRedisCommand::DoGetParam(uint8_t *p_param)
 {
-    return GetBaseTypeParam(param);
+    return GetParamNumeric(p_param);
 }
 
-bool MRedisCommand::DoGetParam(int16_t &param)
+MDbError MRedisCommand::DoGetParam(int16_t *p_param)
 {
-    return GetBaseTypeParam(param);
+    return GetParamNumeric(p_param);
 }
 
-bool MRedisCommand::DoGetParam(uint16_t &param)
+MDbError MRedisCommand::DoGetParam(uint16_t *p_param)
 {
-    return GetBaseTypeParam(param);
+    return GetParamNumeric(p_param);
 }
 
-bool MRedisCommand::DoGetParam(int32_t &param)
+MDbError MRedisCommand::DoGetParam(int32_t *p_param)
 {
-    return GetBaseTypeParam(param);
+    return GetParamNumeric(p_param);
 }
 
-bool MRedisCommand::DoGetParam(uint32_t &param)
+MDbError MRedisCommand::DoGetParam(uint32_t *p_param)
 {
-    return GetBaseTypeParam(param);
+    return GetParamNumeric(p_param);
 }
 
-bool MRedisCommand::DoGetParam(int64_t &param)
+MDbError MRedisCommand::DoGetParam(int64_t *p_param)
 {
-    return GetBaseTypeParam(param);
+    return GetParamNumeric(p_param);
 }
 
-bool MRedisCommand::DoGetParam(uint64_t &param)
+MDbError MRedisCommand::DoGetParam(uint64_t *p_param)
 {
-    return GetBaseTypeParam(param);
+    return GetParamNumeric(p_param);
 }
 
-bool MRedisCommand::DoGetParam(float &param)
+MDbError MRedisCommand::DoGetParam(float *p_param)
 {
-    return GetBaseTypeParam(param);
+    return GetParamNumeric(p_param);
 }
 
-bool MRedisCommand::DoGetParam(double &param)
+MDbError MRedisCommand::DoGetParam(double *p_param)
 {
-    return GetBaseTypeParam(param);
+    return GetParamNumeric(p_param);
 }
 
-bool MRedisCommand::DoGetParam(std::string &param)
+MDbError MRedisCommand::DoGetParam(std::string *p_param)
 {
     if (!pp_result_)
     {
-        MLOG(Error) << "pp_result_ is null";
-        return false;
+        last_error_msg_ = "pp_result_ is null";
+        last_error_ = MDbError::NoData;
+        return last_error_;
     }
     if (cur_row_ >= row_count_)
     {
-        MLOG(Error) << "cur row:" << cur_row_ << " is large than row count:" << row_count_;
-        return false;
+        last_error_msg_ = MConcat("cur row:", cur_row_, " is large than row count:", row_count_);
+        last_error_ = MDbError::NoData;
+        return last_error_;
     }
-    redisReply *p_reply = pp_result_[cur_row_];
+    redisReply *p_reply = pp_result_[cur_row_++];
     if (!p_reply)
     {
-        MLOG(Error) << "p_reply is null, cur row:" << cur_row_;
-        return false;
+        last_error_msg_ = MConcat("p_reply is null, cur row:", cur_row_);
+        last_error_ = MDbError::NoData;
+        return last_error_;
     }
+    last_error_msg_ = "";
+    last_error_ = MDbError::No;
     if (p_reply->type == REDIS_REPLY_INTEGER)
     {
-        if (!MConvertTo(p_reply->integer, param))
+        if (!MConvertTo(p_reply->integer, *p_param))
         {
-            MLOG(Error) << "convert base type to str failed";
-            return false;
+            last_error_msg_ = "convert int to string failed";
+            last_error_ = MDbError::ParamCannotConvert;
         }
     }
     else if (p_reply->type == REDIS_REPLY_STRING)
     {
-        param.resize(p_reply->len);
-        memcpy(&param[0], p_reply->str, param.size());
+        p_param->resize(p_reply->len);
+        memcpy(&((*p_param)[0]), p_reply->str, p_param->size());
     }
     else
     {
-        MLOG(Error) << "type:" << p_reply->type << " can't get param";
-        return false;
+        last_error_msg_ = MConcat("type:", p_reply->type, " can't convert to string");
+        last_error_ = MDbError::ParamCannotConvert;
     }
-    ++cur_row_;
-    return true;
+    return last_error_;
 }
 
-bool MRedisCommand::DoGetParam(MBlob &param)
+MDbError MRedisCommand::DoGetParam(MBlob *p_param)
 {
     if (!pp_result_)
     {
-        MLOG(Error) << "pp_result_ is null";
-        return false;
+        last_error_msg_ = "pp_result_ is null";
+        last_error_ = MDbError::NoData;
+        return last_error_;
     }
     if (cur_row_ >= row_count_)
     {
-        MLOG(Error) << "cur row:" << cur_row_ << " is large than row count:" << row_count_;
-        return false;
+        last_error_msg_ = MConcat("cur row:", cur_row_, " is large than row count:", row_count_);
+        last_error_ = MDbError::NoData;
+        return last_error_;
     }
-    redisReply *p_reply = pp_result_[cur_row_];
+    redisReply *p_reply = pp_result_[cur_row_++];
     if (!p_reply)
     {
-        MLOG(Error) << "p_reply is null, cur row:" << cur_row_;
-        return false;
+        last_error_msg_ = MConcat("p_reply is null, cur row:", cur_row_);
+        last_error_ = MDbError::NoData;
+        return last_error_;
     }
+    last_error_msg_ = "";
+    last_error_ = MDbError::No;
     if (p_reply->type == REDIS_REPLY_INTEGER)
     {
-        MLOG(Error) << "convert base type to blob";
-        return false;
+        last_error_msg_ = "convert int to blob failed";
+        last_error_ = MDbError::ParamCannotConvert;
     }
     else if (p_reply->type == REDIS_REPLY_STRING)
     {
-        param.Resize(p_reply->len);
-        memcpy(param.GetData(), p_reply->str, param.GetSize());
+        p_param->Resize(p_reply->len);
+        memcpy(p_param->GetData(), p_reply->str, p_param->GetSize());
     }
     else
     {
-        MLOG(Error) << "type:" << p_reply->type << " can't get param";
-        return false;
+        last_error_msg_ = MConcat("type:", p_reply->type, " can't convert to blob");
+        last_error_ = MDbError::ParamCannotConvert;
     }
-    ++cur_row_;
-    return true;
+    return last_error_;
 }

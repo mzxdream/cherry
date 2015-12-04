@@ -97,13 +97,23 @@ private:
     template<typename T, typename... Args>
     MDbError AddParams(const T &param, const Args&... args)
     {
-        return DoAddParam(&param) && AddParams(args...);
+        MDbError ret = DoAddParam(&param);
+        if (ret == MDbError::No)
+        {
+            return AddParams(args...);
+        }
+        return ret;
     }
     MDbError GetParams() { return MDbError::No; }
     template<typename T, typename... Args>
     MDbError GetParams(T &param, Args&... args)
     {
-        return DoGetParam(param) && GetParams(args...);
+        MDbError ret = DoGetParam(param);
+        if (ret == MDbError::No)
+        {
+            return GetParams(args...);
+        }
+        return ret;
     }
 protected:
     MDbError last_error_;
