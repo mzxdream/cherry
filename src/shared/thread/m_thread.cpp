@@ -1,9 +1,10 @@
 #include <thread/m_thread.h>
-#include <util/m_log.h>
+#include <util/m_string.h>
 
 MThread::MThread()
     :need_run_(false)
     ,running_(false)
+    ,last_error_(MThreadError::No)
 {
 }
 
@@ -12,13 +13,14 @@ MThread::~MThread()
     StopAndJoin();
 }
 
-bool MThread::Start()
+MThreadError MThread::Start()
 {
     if (need_run_
         || running_)
     {
-        MLOG(Error) << "thread is running";
-        return false;
+        last_error_msg_ = "thread is running";
+        last_error_ = MThreadError::IsRunning;
+        return last_error_;
     }
     need_run_ = true;
     running_ = true;
@@ -27,10 +29,13 @@ bool MThread::Start()
     {
         need_run_ = false;
         running_ = false;
-        MLOG(Error) << "create thread failed:" << err;
-        return false;
+        last_error_msg_ = MConcat("create thread failed error:", err);
+        last_error_ = MThreadError::CreateFailed;
+        return last_error_;
     }
-    return true;
+    last_error_msg_ = "";
+    last_error_ = MThreadError::No;
+    return last_error_;
 }
 
 void MThread::Stop()
@@ -41,45 +46,56 @@ void MThread::Stop()
     }
 }
 
-bool MThread::Join()
+MThreadError MThread::Join()
 {
     if (running_)
     {
         int err = pthread_join(th_, nullptr);
         if (err != 0)
         {
-            MLOG(Error) << "join thread failed err:" << err;
-            return false;
+            last_error_msg_ = MConcat("join thread failed err:", err);
+            last_error_ = MThreadError::JoinFailed;
+            return last_error_;
         }
     }
-    return true;
+    last_error_msg_ = "";
+    last_error_ = MThreadError::No;
+    return last_error_;
 }
 
-bool MThread::StopAndJoin()
+MThreadError MThread::StopAndJoin()
 {
     Stop();
     return Join();
 }
 
+MThreadError MThread::GetLastError() const
+{
+    return last_error_;
+}
+
+const std::string& MThread::GetLastErrorMsg() const
+{
+    return last_error_msg_;
+}
+
 void* MThread::ThreadMain(void *p_param)
 {
+    if (!p_param)
+    {
+        return nullptr;
+    }
+    MThread *p_th = static_cast<MThread*>(p_param);
+    if (!p_th)
+    {
+        return nullptr;
+    }
     do
     {
-        if (!p_param)
-        {
-            MLOG(Error) << "p_param is null";
-            break;
-        }
-        MThread *p_th = static_cast<MThread*>(p_param);
-        if (!p_th)
-        {
-            MLOG(Error) << "p_th cast from p_param is null";
-            break;
-        }
         if (!p_th->DoBeforeThreadStart())
         {
-            MLOG(Error) << "do before thread start failed";
-            p_th->running_ = false;
+            p_th->last_error_msg_ = "do before thread start failed";
+            p_th->last_error_ = MThreadError::Unknown;
             break;
         }
         while (p_th->need_run_)
@@ -87,8 +103,8 @@ void* MThread::ThreadMain(void *p_param)
             p_th->DoRun();
         }
         p_th->DoAfterThreadStop();
-        p_th->running_ = false;
     } while (0);
+    p_th->running_ = false;
     pthread_exit(nullptr);
     return nullptr;
 }
