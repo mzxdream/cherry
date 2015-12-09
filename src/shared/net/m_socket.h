@@ -34,7 +34,7 @@ enum class MSocketProtocol
     Default = 0,
     TCP = IPPROTO_TCP,
     UDP = IPPROTO_UDP,
-}
+};
 
 class MSocket
 {
@@ -52,7 +52,8 @@ public:
     MSocketError Listen(int count);
     MSocketError Accept(MSocket *p_sock, std::string *p_ip, unsigned short *p_port);
     MSocketError Connect(const std::string &ip, unsigned short port);
-    MSocketError
+    std::pair<int, MSocketError> Send(const char *p_buf, int len);
+    std::pair<int, MSocketError> Recv(void *p_buf, int len);
 private:
     MSocketError CheckError();
 private:

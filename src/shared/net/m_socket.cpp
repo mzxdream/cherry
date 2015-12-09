@@ -2,6 +2,7 @@
 #include <string.h>
 #include <arpa/inet.h>
 #include <errno.h>
+#include <unistd.h>
 
 MSocket::MSocket()
     :sock_(-1)
@@ -90,7 +91,7 @@ MSocketError MSocket::Listen(int count)
     return MSocketError::No;
 }
 
-MSocketError MSocket::Accept(MSocket *p_sock, std::string *p_ip, unsigned short *p_port);
+MSocketError MSocket::Accept(MSocket *p_sock, std::string *p_ip, unsigned short *p_port)
 {
     if (!p_sock)
     {
@@ -143,6 +144,28 @@ MSocketError MSocket::Connect(const std::string &ip, unsigned short port)
         return CheckError();
     }
     return MSocketError::No;
+}
+
+std::pair<int, MSocketError> MSocket::Send(const char *p_buf, int len)
+{
+    int send_len = 0;
+    MSocketError err = MSocketError::No;
+    if ((send_len = send(sock_, p_buf, len, 0)) == -1)
+    {
+        err = CheckError();
+    }
+    return std::make_pair(send_len, err);
+}
+
+std::pair<int, MSocketError> MSocket::Recv(void *p_buf, int len)
+{
+    int recv_len = 0;
+    MSocketError err = MSocketError::No;
+    if ((recv_len = recv(sock_, p_buf, len, 0)) == -1)
+    {
+        err = CheckError();
+    }
+    return std::make_pair(recv_len, err);
 }
 
 MSocketError MSocket::CheckError()
