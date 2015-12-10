@@ -3,6 +3,7 @@
 #include <arpa/inet.h>
 #include <errno.h>
 #include <unistd.h>
+#include <fcntl.h>
 
 MSocket::MSocket()
     :sock_(-1)
@@ -166,6 +167,30 @@ std::pair<int, MSocketError> MSocket::Recv(void *p_buf, int len)
         err = CheckError();
     }
     return std::make_pair(recv_len, err);
+}
+
+MSocketError MSocket::SetNonBlock()
+{
+    int flag = fcntl(sock_, F_GETFL, 0);
+    if (flag < 0)
+    {
+        return CheckError();
+    }
+    if (fcntl(sock_, flag|O_NONBLOCK) < 0)
+    {
+        return CheckError();
+    }
+    return MSocketError::No;
+}
+
+MSocketError MSocket::SetReUseAddr()
+{
+    int reuse = 1;
+    if (setsockopt(sock_, SOL_SOCKET, SO_REUSEADDR, reinterpret_cast<const char*>(&reuse), sizeof(reuse)) < 0)
+    {
+        return CheckError();
+    }
+    return MSocketError::No;
 }
 
 MSocketError MSocket::CheckError()

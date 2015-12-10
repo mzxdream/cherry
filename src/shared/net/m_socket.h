@@ -54,6 +54,8 @@ public:
     MSocketError Connect(const std::string &ip, unsigned short port);
     std::pair<int, MSocketError> Send(const char *p_buf, int len);
     std::pair<int, MSocketError> Recv(void *p_buf, int len);
+    MSocketError SetNonBlock();
+    MSocketError SetReUseAddr();
 private:
     MSocketError CheckError();
 private:
