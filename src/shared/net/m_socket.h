@@ -10,8 +10,8 @@ enum class MSocketError
 {
     No = 0,
     Unknown = 1,
-    SocketCreated = 2,
-    SocketIsNull = 3,
+    Created = 2,
+    Invalid = 3,
     AddrToStrFailed = 4,
     InProgress = 5,
     Again = 6,
@@ -50,16 +50,21 @@ public:
     MSocketError Close();
     MSocketError Bind(const std::string &ip, unsigned short port);
     MSocketError Listen(int count);
-    MSocketError Accept(MSocket *p_sock, std::string *p_ip, unsigned short *p_port);
+    MSocketError Accept(MSocket *p_sock);
     MSocketError Connect(const std::string &ip, unsigned short port);
     std::pair<int, MSocketError> Send(const char *p_buf, int len);
     std::pair<int, MSocketError> Recv(void *p_buf, int len);
-    MSocketError SetNonBlock();
-    MSocketError SetReUseAddr();
+    MSocketError SetBlock(bool block);
+    MSocketError SetReUseAddr(bool re_use);
+    int GetHandler() const;
+    const std::string& GetIP() const;
+    unsigned short GetPort() const;
 private:
     MSocketError CheckError();
 private:
     int sock_;
+    std::string ip_;
+    unsigned short port_;
 };
 
 #endif
