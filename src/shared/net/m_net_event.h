@@ -21,19 +21,19 @@ public:
     MNetEvent();
     ~MNetEvent();
 public:
-    void SetActive(bool active);
-    bool GetActive() const;
-    void SetReadCallback(std::function<void ()> cb_read);
-    void SetWriteCallback(std::function<void ()> cb_write);
-    void SetCloseCallback(std::function<void ()> cb_close);
-    void SetErrorCallback(std::function<void ()> cb_error);
+    void SetEvent(int event);
+    int  GetEvent() const;
+    void SetReadCallback(const std::function<void ()> &cb_read);
+    void SetWriteCallback(const std::function<void ()> &cb_write);
+    void SetCloseCallback(const std::function<void ()> &cb_close);
+    void SetErrorCallback(const std::function<void ()> &cb_error);
 
     void OnRead();
     void OnWrite();
     void OnClose();
     void OnError(MNetEventError err);
 private:
-    bool active_;
+    int event_;
     std::function<void ()> cb_read_;
     std::function<void ()> cb_write_;
     std::function<void ()> cb_close_;

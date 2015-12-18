@@ -25,14 +25,14 @@ MEpollError MEpoll::Attach(int fd)
     return MEpollError::No;
 }
 
-int MSocket::Detach()
+int MEpoll::Detach()
 {
     int old_fd = fd_;
     fd_ = -1;
     return old_fd;
 }
 
-MEpollError MEpoll::Create()
+MEpollError MEpoll::Create(size_t max_events)
 {
     if (fd_ >= 0)
     {
@@ -42,6 +42,7 @@ MEpollError MEpoll::Create()
     {
         return CheckError();
     }
+    event_list.resize(max_events);
     return MEpollError::No;
 }
 
@@ -58,10 +59,78 @@ MEpollError MEpoll::Close()
     return MEpollError::No;
 }
 
-MEpollError MEpoll::AddEvent()
+MEpollError MEpoll::AddEvent(int sock, int event, MNetEvent &ev)
 {
+    int op = EPOLL_CTL_ADD;
+    int prev_event = ev.GetEvent();
+    if (prev_event != 0)
+    {
+        op = EPOLL_CTL_MOD;
+    }
+    struct epoll_event ee;
+    ee.events = event | prev_event;
+    ee.data.ptr = &ev;
+    if (epoll_ctl(fd_, op, sock, &ee) == -1)
+    {
+        return CheckError();
+    }
+    ev.SetEvent(ee.events);
+    return MEpollError::No;
 }
 
-MEpollError MEpoll::DelEvent()
+MEpollError MEpoll::DelEvent(int sock, int event, MNetEvent &ev)
 {
+    struct epoll_event ee;
+    ee.events = ev.GetEvent() & ~event;
+    ee.data.ptr = &ev;
+    int op = EPOLL_CTL_MOD;
+    if (ee.events == 0)
+    {
+        op = EPOLL_CTL_DEL;
+        ee.data.ptr = nullptr;
+    }
+    if (epoll_ctl(fd_, op, sock, &ee) == -1)
+    {
+        return CheckError();
+    }
+    ev.SetEvent(ee.events);
+    return MEpollError::No;
+}
+
+MEpollError MEpoll::CloseEvent(int sock, MNetEvent &ev)
+{
+    struct epoll_event ee;
+    ee.events = 0;
+    ee.data.ptr = nullptr;
+    if (epoll_ctl(fd_, EPOLL_CTL_DEL, sock, &ee) == -1)
+    {
+        return CheckError();
+    }
+    return MEpollError::No;
+}
+
+MEpollError MEpoll::ProcessEvents(int timeout)
+{
+    int ret = epoll_wait(fd_, &event_list[0], event_list.size(), timeout);
+    if (ret == -1)
+    {
+        return CheckError();
+    }
+    if (ret == 0)
+    {
+        if (timeout == -1)
+        {
+            return MEpollError::Unknown;
+        }
+        return MEpollError::No;
+    }
+    for (int i = 0; i < ret; ++i)
+    {
+
+    }
+}
+
+MEpollError MEpoll::CheckError()
+{
+    return MEpollError::Unknown;
 }

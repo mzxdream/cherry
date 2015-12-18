@@ -1,6 +1,9 @@
 #ifndef _M_EPOLL_H_
 #define _M_EPOLL_H_
 
+#include <net/m_net_event.h>
+#include <vector>
+
 enumc class MEpollError
 {
     No = 0,
@@ -18,13 +21,17 @@ public:
 public:
     MEpollError Attach(int fd);
     int Detach();
-    MEpollError Create();
+    MEpollError Create(size_t max_events);
     MEpollError Close();
-    MEpollError AddEvent();
-    MEpollError DelEvent();
-    MEpollError CloseEvent();
+    MEpollError AddEvent(int sock, int event, MNetEvent &ev);
+    MEpollError DelEvent(int sock, int event, MNetEvent &ev);
+    MEpollError CloseEvent(int sock, MNetEvent &ev);
+    MEpollError ProcessEvents(int timeout);
+private:
+    MEpollError CheckError();
 private:
     int fd_;
+    std::vector<epoll_event>  event_list;
 };
 
 #endif
