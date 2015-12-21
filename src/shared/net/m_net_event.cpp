@@ -34,11 +34,6 @@ void MNetEvent::SetCloseCallback(const std::function<void ()> &cb_close)
     cb_close_ = cb_close;
 }
 
-void MNetEvent::SetErrorCallback(const std::function<void (MNetEventError)> &cb_error)
-{
-    cb_error_ = cb_error;
-}
-
 void MNetEvent::OnRead()
 {
     if (cb_read_)
@@ -60,13 +55,5 @@ void MNetEvent::OnClose()
     if (cb_close_)
     {
         cb_close_();
-    }
-}
-
-void MNetEvent::OnError(MNetEventError err)
-{
-    if (cb_error_)
-    {
-        cb_error_();
     }
 }

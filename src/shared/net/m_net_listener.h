@@ -6,8 +6,10 @@ class MNetListener
 public:
     MNetListener();
     ~MNetListener();
-    MNetListener(const MNetListener &);
-    MNetListener& operator=(const MNetListener &);
+    MNetListener(const MNetListener &) = delete;
+    MNetListener& operator=(const MNetListener &) = delete;
+public:
+private:
 };
 
 #endif

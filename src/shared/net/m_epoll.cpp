@@ -42,7 +42,7 @@ MEpollError MEpoll::Create(size_t max_events)
     {
         return CheckError();
     }
-    event_list.resize(max_events);
+    event_list_.resize(max_events);
     return MEpollError::No;
 }
 
@@ -106,12 +106,13 @@ MEpollError MEpoll::CloseEvent(int sock, MNetEvent &ev)
     {
         return CheckError();
     }
+    ev.SetEvent(ee.events);
     return MEpollError::No;
 }
 
 MEpollError MEpoll::ProcessEvents(int timeout)
 {
-    int ret = epoll_wait(fd_, &event_list[0], event_list.size(), timeout);
+    int ret = epoll_wait(fd_, &event_list_[0], event_list_.size(), timeout);
     if (ret == -1)
     {
         return CheckError();
@@ -126,8 +127,33 @@ MEpollError MEpoll::ProcessEvents(int timeout)
     }
     for (int i = 0; i < ret; ++i)
     {
-
+        MNetEvent *p_event = static_cast<MNetEvent*>(event_list_[i].data.ptr);
+        if (!p_event)
+        {
+            continue;
+        }
+        int events = event_list_[i].events;
+        if (events & (EPOLLERR|EPOLLHUP))
+        {
+            p_event->OnClose();
+        }
+        else if (events & EPOLLIN)
+        {
+            if (events & EPOLLRDHUP)
+            {
+                p_event->OnClose();
+            }
+            else
+            {
+                p_event->OnRead();
+            }
+        }
+        else if (events & EPOLLOUT)
+        {
+            p_event->OnWrite();
+        }
     }
+    return MEpollError::No;
 }
 
 MEpollError MEpoll::CheckError()

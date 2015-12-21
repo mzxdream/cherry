@@ -2,8 +2,16 @@
 #define _M_NET_CONNECTOR_H_
 
 #include <net/m_socket.h>
+#include <net/m_net_event.h>
 
 class MNetListener;
+
+struct MNetBuffer
+{
+    void *p_buf;
+    size_t cur_len;
+    size_t total_len;
+};
 
 class MNetConnector
 {
@@ -13,9 +21,15 @@ public:
     MNetConnector(const MNetConnector &) = delete;
     MNetConnector& operator=(const MNetConnector &) = delete;
 public:
+
+    void SetListener(MNetListener *p_listener);
+
+    MSocket& GetSocket();
+    MNetEvent& GetEvent();
 private:
     MSocket sock_;
-    MNetListener &listener_;
+    MNetListener *p_listener_;
+    MNetEvent event_;
 };
 
 #endif

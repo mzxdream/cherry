@@ -31,7 +31,7 @@ private:
     MEpollError CheckError();
 private:
     int fd_;
-    std::vector<epoll_event>  event_list;
+    std::vector<epoll_event> event_list_;
 };
 
 #endif
