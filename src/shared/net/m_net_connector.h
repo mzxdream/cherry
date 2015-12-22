@@ -6,13 +6,6 @@
 
 class MNetListener;
 
-struct MNetBuffer
-{
-    void *p_buf;
-    size_t cur_len;
-    size_t total_len;
-};
-
 class MNetConnector
 {
 public:
@@ -21,9 +14,7 @@ public:
     MNetConnector(const MNetConnector &) = delete;
     MNetConnector& operator=(const MNetConnector &) = delete;
 public:
-
     void SetListener(MNetListener *p_listener);
-
     MSocket& GetSocket();
     MNetEvent& GetEvent();
 private:

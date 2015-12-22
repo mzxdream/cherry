@@ -3,9 +3,7 @@
 
 #include <net/m_epoll.h>
 #include <vector>
-
-#define M_NET_HANDLERS 4
-#define M_NET_EVENTS 100
+#include <thread>
 
 class MNetManager
 {
@@ -14,8 +12,13 @@ public:
     ~MNetManager();
     MNetManager(const MNetManager &) = delete;
     MNetManager& operator=(const MNetManager &) = delete;
+public:
+    MNetError Create(int handler_count, int event_count);
+    MNetError Start();
+    MNetError Stop();
 private:
-    MEpoll handler_list_[M_NET_HANDLERS];
+    std::vector<MEpoll> handler_list_;
+    std::vector<std::thread> thread_list_;
 };
 
 #endif

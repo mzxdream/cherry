@@ -19,8 +19,6 @@ public:
     MEpoll(const MEpoll &) = delete;
     MEpoll& operator=(const MEpoll &) = delete;
 public:
-    MEpollError Attach(int fd);
-    int Detach();
     MEpollError Create(size_t max_events);
     MEpollError Close();
     MEpollError AddEvent(int sock, int event, MNetEvent &ev);

@@ -11,27 +11,6 @@ MEpoll::~MEpoll()
     Close();
 }
 
-MEpollError MEpoll::Attach(int fd)
-{
-    if (fd >= 0 && fd_ != fd)
-    {
-        MEpollError ret = MEpollError::No;
-        if ((ret = Close()) != MEpollError::No)
-        {
-            return ret;
-        }
-        fd_ = fd;
-    }
-    return MEpollError::No;
-}
-
-int MEpoll::Detach()
-{
-    int old_fd = fd_;
-    fd_ = -1;
-    return old_fd;
-}
-
 MEpollError MEpoll::Create(size_t max_events)
 {
     if (fd_ >= 0)
