@@ -5,22 +5,27 @@
 #include <net/m_net_event.h>
 
 class MNetListener;
+class MNetEventHandler;
 
 class MNetConnector
 {
 public:
-    MNetConnector();
+    MNetConnector(int sock, MNetListener &listener, MNetEventHandler &event_handler);
     ~MNetConnector();
     MNetConnector(const MNetConnector &) = delete;
     MNetConnector& operator=(const MNetConnector &) = delete;
 public:
-    void SetListener(MNetListener *p_listener);
     MSocket& GetSocket();
     MNetEvent& GetEvent();
+    MNetListener& GetListener();
+    MNetEventHandler& GetEventHandler();
+
+    MNetError Init();
 private:
     MSocket sock_;
-    MNetListener *p_listener_;
     MNetEvent event_;
+    MNetListener &listener_;
+    MNetEventHandler &event_handler_;
 };
 
 #endif

@@ -1,34 +1,35 @@
 #ifndef _M_NET_EVENT_H_
 #define _M_NET_EVENT_H_
 
+#include <net/m_net_common.h>
 #include <functional>
-#include <sys/epoll.h>
 
-#define M_NET_EVENT_READ (EPOLLIN|EPOLLRDHUP)
-#define M_NET_EVENT_WRITE EPOLLOUT
-#define M_NET_EVENT_LEVEL 0
-#define M_NET_EVENT_EDGE EPOLLET
+class MNetEventHandler;
+class MSocket;
 
 class MNetEvent
 {
 public:
-    MNetEvent();
+    MNetEvent(MSocket &sock, MNetEventHandler &event_handler);
     ~MNetEvent();
 public:
-    void SetEvent(int event);
-    int  GetEvent() const;
-    void SetReadCallback(const std::function<void ()> &cb_read);
-    void SetWriteCallback(const std::function<void ()> &cb_write);
-    void SetCloseCallback(const std::function<void ()> &cb_close);
-
-    void OnRead();
-    void OnWrite();
-    void OnClose();
+    MNetError EnableRead(bool enable);
+    MNetError EnableWrite(bool enable);
+    void SetReadCallback(std::function<void ()> read_cb);
+    void SetWriteCallback(std::function<void ()> write_cb);
+    void SetErrorCallback(std::function<void (MNetError)> error_cb);
+public:
+    void OnReadCallback();
+    void OnWriteCallback();
+    void OnErrorCallback(MNetError err);
 private:
-    int event_;
-    std::function<void ()> cb_read_;
-    std::function<void ()> cb_write_;
-    std::function<void ()> cb_close_;
+    MSocket &sock_;
+    MNetEventHandler &event_handler_;
+    bool enable_read_;
+    bool enable_write_;
+    std::function<void ()> read_cb_;
+    std::function<void ()> write_cb_;
+    std::function<void (MNetError)> error_cb_;
 };
 
 #endif

@@ -5,17 +5,7 @@
 #include <netinet/in.h>
 #include <string>
 #include <utility>
-
-enum class MSocketError
-{
-    No = 0,
-    Unknown = 1,
-    Created = 2,
-    Invalid = 3,
-    AddrToStrFailed = 4,
-    InProgress = 5,
-    Again = 6,
-};
+#include <net/m_net_common.h>
 
 enum class MSocketFamily
 {
@@ -39,28 +29,28 @@ enum class MSocketProtocol
 class MSocket
 {
 public:
-    MSocket();
+    MSocket(int sock = -1);
     ~MSocket();
     MSocket(const MSocket &) = delete;
     MSocket& operator=(const MSocket &) = delete;
 public:
-    MSocketError Attach(int sock);
+    MNetError Attach(int sock);
     int Detach();
-    MSocketError Create(MSocketFamily family, MSocketType type, MSocketProtocol proto);
-    MSocketError Close();
-    MSocketError Bind(const std::string &ip, unsigned short port);
-    MSocketError Listen(int count);
-    MSocketError Accept(MSocket *p_sock);
-    MSocketError Connect(const std::string &ip, unsigned short port);
-    std::pair<int, MSocketError> Send(const char *p_buf, int len);
-    std::pair<int, MSocketError> Recv(void *p_buf, int len);
-    MSocketError SetBlock(bool block);
-    MSocketError SetReUseAddr(bool re_use);
+    MNetError Create(MSocketFamily family, MSocketType type, MSocketProtocol proto);
+    MNetError Close();
+    MNetError Bind(const std::string &ip, unsigned short port);
+    MNetError Listen(int count);
+    MNetError Accept(MSocket &sock);
+    MNetError Connect(const std::string &ip, unsigned short port);
+    std::pair<int, MNetError> Send(const char *p_buf, int len);
+    std::pair<int, MNetError> Recv(void *p_buf, int len);
+    MNetError SetBlock(bool block);
+    MNetError SetReUseAddr(bool re_use);
     int GetHandler() const;
     const std::string& GetIP() const;
     unsigned short GetPort() const;
 private:
-    MSocketError CheckError();
+    MNetError CheckError();
 private:
     int sock_;
     std::string ip_;

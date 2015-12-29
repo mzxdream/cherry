@@ -5,8 +5,8 @@
 #include <unistd.h>
 #include <fcntl.h>
 
-MSocket::MSocket()
-    :sock_(-1)
+MSocket::MSocket(int sock)
+    :sock_(sock)
     ,port_(0)
 {
 }
@@ -16,18 +16,18 @@ MSocket::~MSocket()
     Close();
 }
 
-MSocketError MSocket::Attach(int sock)
+MNetError MSocket::Attach(int sock)
 {
     if (sock >= 0 && sock_ != sock)
     {
-        MSocketError ret = MSocketError::No;
-        if ((ret = Close()) != MSocketError::No)
+        MNetError err = Close();
+        if (err != MNetError::No)
         {
-            return ret;
+            return err;
         }
         sock_ = sock;
     }
-    return MSocketError::No;
+    return MNetError::No;
 }
 
 int MSocket::Detach()
@@ -37,20 +37,20 @@ int MSocket::Detach()
     return old_sock;
 }
 
-MSocketError MSocket::Create(MSocketFamily family, MSocketType type, MSocketProtocol proto)
+MNetError MSocket::Create(MSocketFamily family, MSocketType type, MSocketProtocol proto)
 {
     if (sock_ >= 0)
     {
-        return MSocketError::Created;
+        return MNetError::Created;
     }
     if ((sock_ = socket(static_cast<int>(family), static_cast<int>(type), static_cast<int>(proto))) == -1);
     {
         return CheckError();
     }
-    return MSocketError::No;
+    return MNetError::No;
 }
 
-MSocketError MSocket::Close()
+MNetError MSocket::Close()
 {
     if (sock_ < 0)
     {
@@ -60,10 +60,10 @@ MSocketError MSocket::Close()
         }
         sock_ = -1;
     }
-    return MSocketError::No;
+    return MNetError::No;
 }
 
-MSocketError MSocket::Bind(const std::string &ip, unsigned short port)
+MNetError MSocket::Bind(const std::string &ip, unsigned short port)
 {
     struct sockaddr_in addr;
     memset(&addr, 0, sizeof(addr));
@@ -83,44 +83,40 @@ MSocketError MSocket::Bind(const std::string &ip, unsigned short port)
     }
     ip_ = ip;
     port_ = port;
-    return MSocketError::No;
+    return MNetError::No;
 }
 
-MSocketError MSocket::Listen(int count)
+MNetError MSocket::Listen(int count)
 {
     if (listen(sock_, count) == -1)
     {
         return CheckError();
     }
-    return MSocketError::No;
+    return MNetError::No;
 }
 
-MSocketError MSocket::Accept(MSocket *p_sock)
+MNetError MSocket::Accept(MSocket &sock)
 {
-    if (!p_sock)
-    {
-        return MSocketError::Invalid;
-    }
     struct sockaddr_in addr;
     socklen_t len = sizeof(addr);
-    int sock = 0;
-    if ((sock = accept(sock_, reinterpret_cast<struct sockaddr*>(&addr), &len)) == -1)
+    int fd = accept(sock_, reinterpret_cast<struct sockaddr*>(&addr), &len);
+    if (fd == -1)
     {
         return CheckError();
     }
-    MSocketError ret = p_sock->Attach(sock);
-    if (ret != MSocketError::No)
+    MNetError err = sock.Attach(fd);
+    if (err != MNetError::No)
     {
-        close(sock);
-        return ret;
+        close(fd);
+        return err;
     }
-    p_sock->ip_->resize(64);
-    inet_ntop(AF_INET, &addr.sin_addr.s_addr, &((p_sock->ip_)[0]), p_sock->ip_->size());
-    p_sock->port_ = ntohs(addr.sin_port);
-    return MSocketError::No;
+    sock.ip_.resize(64);
+    inet_ntop(AF_INET, &addr.sin_addr.s_addr, &((sock.ip_)[0]), sock.ip_.size());
+    sock.port_ = ntohs(addr.sin_port);
+    return MNetError::No;
 }
 
-MSocketError MSocket::Connect(const std::string &ip, unsigned short port)
+MNetError MSocket::Connect(const std::string &ip, unsigned short port)
 {
     struct sockaddr_in addr;
     memset(&addr, 0, sizeof(addr));
@@ -138,32 +134,30 @@ MSocketError MSocket::Connect(const std::string &ip, unsigned short port)
     {
         return CheckError();
     }
-    return MSocketError::No;
+    return MNetError::No;
 }
 
-std::pair<int, MSocketError> MSocket::Send(const char *p_buf, int len)
+std::pair<int, MNetError> MSocket::Send(const char *p_buf, int len)
 {
     int send_len = 0;
-    MSocketError err = MSocketError::No;
     if ((send_len = send(sock_, p_buf, len, 0)) == -1)
     {
-        err = CheckError();
+        return std::make_pair(0, CheckError());
     }
-    return std::make_pair(send_len, err);
+    return std::make_pair(send_len, MNetError::No);
 }
 
-std::pair<int, MSocketError> MSocket::Recv(void *p_buf, int len)
+std::pair<int, MNetError> MSocket::Recv(void *p_buf, int len)
 {
     int recv_len = 0;
-    MSocketError err = MSocketError::No;
     if ((recv_len = recv(sock_, p_buf, len, 0)) == -1)
     {
-        err = CheckError();
+        return std::make_pair(0, CheckError());
     }
-    return std::make_pair(recv_len, err);
+    return std::make_pair(recv_len, MNetError::No);
 }
 
-MSocketError MSocket::SetBlock(bool block)
+MNetError MSocket::SetBlock(bool block)
 {
     int flag = fcntl(sock_, F_GETFL, 0);
     if (flag < 0)
@@ -182,17 +176,17 @@ MSocketError MSocket::SetBlock(bool block)
     {
         return CheckError();
     }
-    return MSocketError::No;
+    return MNetError::No;
 }
 
-MSocketError MSocket::SetReUseAddr(bool re_use)
+MNetError MSocket::SetReUseAddr(bool re_use)
 {
     int reuse = re_use ? 1 : 0;
     if (setsockopt(sock_, SOL_SOCKET, SO_REUSEADDR, reinterpret_cast<const char*>(&reuse), sizeof(reuse)) < 0)
     {
         return CheckError();
     }
-    return MSocketError::No;
+    return MNetError::No;
 }
 
 int MSocket::GetHandler() const
@@ -210,16 +204,16 @@ unsigned short MSocket::GetPort() const
     return port_;
 }
 
-MSocketError MSocket::CheckError()
+MNetError MSocket::CheckError()
 {
     if (errno == EINPROGRESS)
     {
-        return MSocketError::InProgress;
+        return MNetError::InProgress;
     }
     else if (errno == EAGAIN
             || errno == EWOULDBLOCK)
     {
-        return MSocketError::Again;
+        return MNetError::Again;
     }
-    return MSocketError::Unknown;
+    return MNetError::Unknown;
 }
