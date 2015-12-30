@@ -9,6 +9,8 @@ enum class MNetError
     Created = 3,
     InProgress = 4,
     Again = 5,
+    OutOfMemory = 6,
+    EventHandlerInvalid = 7,
 };
 
 #endif

@@ -9,19 +9,17 @@ class MNetEventHandler;
 class MNetListener
 {
 public:
-    MNetListener(MSocket &sock, MNetEventHandler &event_handler);
+    explicit MNetListener(MSocket &sock, MNetEventHandler &event_handler, std::function<void ()> accept_cb);
     ~MNetListener();
     MNetListener(const MNetListener &) = delete;
     MNetListener& operator=(const MNetListener &) = delete;
 public:
-    MSocket& GetSocket();
-    MNetEvent& GetEvent();
-    MNetEventHandler& GetEventHandler();
-
+    MNetError EnableAccept(bool enable);
 private:
     MSocket &sock_;
     MNetEvent event_;
     MNetEventHandler &event_handler_;
+    std::function<void ()> accept_cb_;
 };
 
 #endif

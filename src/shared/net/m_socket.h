@@ -29,7 +29,7 @@ enum class MSocketProtocol
 class MSocket
 {
 public:
-    MSocket(int sock = -1);
+    explicit MSocket(int sock = -1);
     ~MSocket();
     MSocket(const MSocket &) = delete;
     MSocket& operator=(const MSocket &) = delete;
@@ -39,7 +39,7 @@ public:
     MNetError Create(MSocketFamily family, MSocketType type, MSocketProtocol proto);
     MNetError Close();
     MNetError Bind(const std::string &ip, unsigned short port);
-    MNetError Listen(int count);
+    MNetError Listen(int backlog);
     MNetError Accept(MSocket &sock);
     MNetError Connect(const std::string &ip, unsigned short port);
     std::pair<int, MNetError> Send(const char *p_buf, int len);

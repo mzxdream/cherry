@@ -86,9 +86,9 @@ MNetError MSocket::Bind(const std::string &ip, unsigned short port)
     return MNetError::No;
 }
 
-MNetError MSocket::Listen(int count)
+MNetError MSocket::Listen(int backlog)
 {
-    if (listen(sock_, count) == -1)
+    if (listen(sock_, backlog) == -1)
     {
         return CheckError();
     }

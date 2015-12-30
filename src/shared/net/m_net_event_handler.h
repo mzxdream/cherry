@@ -3,6 +3,7 @@
 
 #include <sys/epoll.h>
 #include <net/m_net_common.h>
+#include <net/m_thread.h>
 
 #define M_NET_EVENT_READ (EPOLLIN|EPOLLRDHUP)
 #define M_NET_EVENT_WRITE EPOLLOUT
@@ -14,6 +15,7 @@
 class MNetEvent;
 
 class MNetEventHandler
+    :public MThread
 {
 public:
     MNetEventHandler();
@@ -21,6 +23,7 @@ public:
     MNetEventHandler(const MNetEventHandler &) = delete;
     MNetEventHandler& operator=(const MNetEventHandler &) = delete;
 public:
+    size_t GetEventCount() const;
     MNetError Create();
     MNetError Close();
     MNetError AddEvent(int fd, int events, MNetEvent *p_event);
@@ -29,12 +32,14 @@ public:
     MNetError ProcessEvents();
     MNetError Interrupt();
 private:
+    virtual void DoRun() override;
+private:
     MNetError CheckError();
 private:
     int epoll_fd_;
     epoll_event event_list_[M_NET_EVENT_MAX_EVENTS];
     int interrupter_[2];
-
+    size_t event_count_;
 };
 
 #endif

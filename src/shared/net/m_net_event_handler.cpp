@@ -5,12 +5,18 @@
 MNetEventHandler::MNetEventHandler()
     :epoll_fd_(-1)
     ,interrupter_({-1, -1})
+    ,event_count_(0)
 {
 }
 
 MNetEventHandler::~MNetEventHandler()
 {
     Close();
+}
+
+size_t MNetEventHandler::GetEventCount() const
+{
+    return event_count_;
 }
 
 MNetError MNetEventHandler::Create()
@@ -82,6 +88,7 @@ MNetError MNetEventHandler::AddEvent(int fd, int events, MNetEvent *p_event)
     {
         return CheckError();
     }
+    ++event_count_;
     return MNetError::No;
 }
 
@@ -106,6 +113,7 @@ MNetError MNetEventHandler::DelEvent(int fd)
     {
         return CheckError();
     }
+    --event_count_;
     return MNetError::No;
 }
 
@@ -161,6 +169,11 @@ MNetError MNetEventHandler::Interrupt()
         return CheckError();
     }
     return MNetError::No;
+}
+
+void MNetEventHandler::DoRun()
+{
+    ProcessEvents();
 }
 
 MNetError MNetEventHandler::CheckError()
