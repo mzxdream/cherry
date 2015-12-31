@@ -10,7 +10,7 @@ class MNetEventHandler;
 class MNetConnector
 {
 public:
-    MNetConnector(int sock, MNetListener &listener, MNetEventHandler &event_handler);
+    explicit MNetConnector(int sock, MNetListener &listener, MNetEventHandler &event_handler);
     ~MNetConnector();
     MNetConnector(const MNetConnector &) = delete;
     MNetConnector& operator=(const MNetConnector &) = delete;
@@ -21,6 +21,9 @@ public:
     MNetEventHandler& GetEventHandler();
 
     MNetError Init();
+
+    MNetError AsyncRead(char *p_buf, size_t size, std::function<void ()> read_cb);
+    MNetError AsyncWrite(const void *p_buf, size_t size, std::function<void ()> write_cb);
 private:
     MSocket sock_;
     MNetEvent event_;

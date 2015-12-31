@@ -15,6 +15,7 @@ public:
     MNetListener& operator=(const MNetListener &) = delete;
 public:
     MNetError EnableAccept(bool enable);
+    MNetError Accept(MSocket &sock);
 private:
     MSocket &sock_;
     MNetEvent event_;

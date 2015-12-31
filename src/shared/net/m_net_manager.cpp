@@ -34,6 +34,7 @@ MNetError MNetManager::Init()
 
 MNetError MNetManager::Close()
 {
+    for ()
     for (size_t i = 0; i < handler_list_.size(); ++i)
     {
         if (handler_list_[i])
@@ -131,7 +132,7 @@ MNetError MNetManager::AddListener(const std::string &ip, unsigned short port, i
             delete p_listener;
             break;
         }
-        listener_list_.push_back(std::pair<MNetListener*, std::function<void (MNetConnector*)> >(p_listener, accept_cb));
+        listener_event_list_.push_back(std::pair<MNetListener*, std::function<void (MNetConnector*)> >(p_listener, accept_cb));
         err = MNetError::No;
     } while (0);
     if (err != MNetError::No)
@@ -139,7 +140,7 @@ MNetError MNetManager::AddListener(const std::string &ip, unsigned short port, i
         delete p_sock;
         return err;
     }
-    socket_list_.push_back(p_sock);
+    listener_sock_list_.push_back(p_sock);
     return MNetError::No;
 }
 
@@ -149,10 +150,25 @@ void MNetManager::OnAcceptCallback(size_t index)
     {
         return;
     }
-    MNetListener *p_listener = listener_list_[index].first;
-    while (true)
+    MNetListener *p_listener = listener_event_list_[index].first;
+    std::function<void (MNetConnector*)> callback = listener_event_list_[index].second;
+    if (!p_listener || !callback)
     {
-
+        return;
+    }
+    MSocket sock;
+    while (p_listener->Accept(sock) == MNetError::No)
+    {
+        MNetEventHandler *p_handler = GetMinEventsEventHandler();
+        if (!p_handler)
+        {
+            return;
+        }
+        MNetConnector *p_connector = new MNetConnector(sock.Detach(), *p_listener, *p_handler);
+        if (p_connector)
+        {
+            callback(p_connector);
+        }
     }
 }
 

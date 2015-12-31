@@ -26,8 +26,8 @@ public:
     void OnAcceptCallback(size_t index);
 private:
     std::vector<MNetEventHandler*> handler_list_;
-    std::vector<MSocket*> socket_list_;
-    std::vector<std::pair<MNetListener*, std::function<void (MNetConnector*)> > > listener_list_;
+    std::vector<MSocket*> listener_sock_list_;
+    std::vector<std::pair<MNetListener*, std::function<void (MNetConnector*)> > > listener_event_list_;
 };
 
 #endif
