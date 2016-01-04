@@ -10,26 +10,37 @@ class MSocket;
 class MNetEvent
 {
 public:
-    MNetEvent(MSocket &sock, MNetEventHandler &event_handler);
+    explicit MNetEvent(MSocket *p_sock, MNetEventHandler *p_event_handler
+        , std::function<void ()> read_cb, std::function<void ()> write_cb, std::function<void (MNetError)> error_cb);
     ~MNetEvent();
+    MNetEvent(const MNetEvent &) = delete;
+    MNetEvent& operator=(const MNetEvent &) = delete;
 public:
+    void SetSocket(MSocket *p_sock);
+    MSocket* GetSocket();
+    void SetEventHandler(MNetEventHandler *p_event_handler);
+    MNetEventHandler* GetEventHandler();
+    void SetReadCallback(std::function<void ()> read_cb);
+    std::function<void ()>& GetReadCallback();
+    void SetWriteCallback(std::function<void ()> write_cb);
+    std::function<void ()>& GetWriteCallback();
+    void SetErrorCallback(std::function<void (MNetError)> error_cb);
+    std::function<void (MNetError)>& GetErrorCallback();
+
     MNetError EnableRead(bool enable);
     MNetError EnableWrite(bool enable);
-    void SetReadCallback(std::function<void ()> read_cb);
-    void SetWriteCallback(std::function<void ()> write_cb);
-    void SetErrorCallback(std::function<void (MNetError)> error_cb);
 public:
     void OnReadCallback();
     void OnWriteCallback();
     void OnErrorCallback(MNetError err);
 private:
-    MSocket &sock_;
-    MNetEventHandler &event_handler_;
-    bool enable_read_;
-    bool enable_write_;
+    MSocket *p_sock_;
+    MNetEventHandler *p_event_handler_;
     std::function<void ()> read_cb_;
     std::function<void ()> write_cb_;
     std::function<void (MNetError)> error_cb_;
+    bool enable_read_;
+    bool enable_write_;
 };
 
 #endif

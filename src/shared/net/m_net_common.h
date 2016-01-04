@@ -10,7 +10,8 @@ enum class MNetError
     InProgress = 4,
     Again = 5,
     OutOfMemory = 6,
-    EventHandlerInvalid = 7,
+    SockInvalid = 7,
+    EventHandlerInvalid = 8,
 };
 
 #endif

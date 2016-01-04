@@ -9,18 +9,29 @@ class MNetEventHandler;
 class MNetListener
 {
 public:
-    explicit MNetListener(MSocket &sock, MNetEventHandler &event_handler, std::function<void ()> accept_cb);
+    explicit MNetListener(MSocket *p_sock, MNetEventHandler *p_event_handler);
     ~MNetListener();
     MNetListener(const MNetListener &) = delete;
     MNetListener& operator=(const MNetListener &) = delete;
 public:
-    MNetError EnableAccept(bool enable);
-    MNetError Accept(MSocket &sock);
+    void SetSocket(MSocket *p_sock);
+    MSocket* GetSocket();
+    MNetEvent& GetEvent();
+    void SetEventHandler(MNetEventHandler *p_event_handler);
+    MNetEventHandler* GetEventHandler();
+
+    MNetError EnableAccept();
+    MNetError AsyncAccept(MSocket *p_sock, std::function<void (MNetError)> accept_cb);
+public:
+    void OnAccecptCallback();
+    void OnErrorCallback(MNetError err);
 private:
-    MSocket &sock_;
+    MSocket *p_sock_;
     MNetEvent event_;
-    MNetEventHandler &event_handler_;
-    std::function<void ()> accept_cb_;
+    MNetEventHandler *p_event_handler_;
+    MSocket *p_accept_sock_;
+    std::function<void (MNetError)> accept_cb_;
+    bool accept_actived_;
 };
 
 #endif

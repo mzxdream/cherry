@@ -10,14 +10,16 @@ class MNetEventHandler;
 class MNetConnector
 {
 public:
-    explicit MNetConnector(int sock, MNetListener &listener, MNetEventHandler &event_handler);
+    MNetConnector();
     ~MNetConnector();
     MNetConnector(const MNetConnector &) = delete;
     MNetConnector& operator=(const MNetConnector &) = delete;
 public:
     MSocket& GetSocket();
     MNetEvent& GetEvent();
-    MNetListener& GetListener();
+    void SetListener(MNetListener *p_listener);
+    MNetListener* GetListener();
+    void SetEventHandler(MNetEventHandler *p_event_handler);
     MNetEventHandler& GetEventHandler();
 
     MNetError Init();
@@ -27,7 +29,7 @@ public:
 private:
     MSocket sock_;
     MNetEvent event_;
-    MNetListener &listener_;
+    MNetListener *p_listener_;
     MNetEventHandler &event_handler_;
 };
 
