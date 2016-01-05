@@ -27,8 +27,8 @@ public:
     void SetErrorCallback(std::function<void (MNetError)> error_cb);
     std::function<void (MNetError)>& GetErrorCallback();
 
-    MNetError EnableRead(bool enable);
-    MNetError EnableWrite(bool enable);
+    MNetError EnableEvents(int events);
+    MNetError DisableEvents();
 public:
     void OnReadCallback();
     void OnWriteCallback();
@@ -39,8 +39,7 @@ private:
     std::function<void ()> read_cb_;
     std::function<void ()> write_cb_;
     std::function<void (MNetError)> error_cb_;
-    bool enable_read_;
-    bool enable_write_;
+    bool events_actived_;
 };
 
 #endif

@@ -211,9 +211,13 @@ MNetError MSocket::CheckError()
         return MNetError::InProgress;
     }
     else if (errno == EAGAIN
-            || errno == EWOULDBLOCK)
+        || errno == EWOULDBLOCK)
     {
         return MNetError::Again;
+    }
+    else if (errno == EINTR)
+    {
+        return MNetError::InterruptedSysCall;
     }
     return MNetError::Unknown;
 }

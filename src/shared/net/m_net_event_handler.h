@@ -10,7 +10,7 @@
 #define M_NET_EVENT_LEVEL 0
 #define M_NET_EVENT_EDGE EPOLLET
 
-#define M_NET_EVENT_MAX_EVENTS 128
+#define M_NET_MAX_EVENTS 128
 
 class MNetEvent;
 
@@ -37,7 +37,7 @@ private:
     MNetError CheckError();
 private:
     int epoll_fd_;
-    epoll_event event_list_[M_NET_EVENT_MAX_EVENTS];
+    epoll_event event_list_[M_NET_MAX_EVENTS];
     int interrupter_[2];
     size_t event_count_;
 };

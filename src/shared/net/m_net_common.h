@@ -9,9 +9,10 @@ enum class MNetError
     Created = 3,
     InProgress = 4,
     Again = 5,
-    OutOfMemory = 6,
-    SockInvalid = 7,
-    EventHandlerInvalid = 8,
+    InterruptedSysCall = 6,
+    OutOfMemory = 7,
+    SockInvalid = 8,
+    EventHandlerInvalid = 9,
 };
 
 #endif

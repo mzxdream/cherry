@@ -119,7 +119,7 @@ MNetError MNetEventHandler::DelEvent(int fd)
 
 MNetError MNetEventHandler::ProcessEvents()
 {
-    int max_events = epoll_wait(epoll_fd_, event_list_, M_NET_EVENT_MAX_EVENTS, -1);
+    int max_events = epoll_wait(epoll_fd_, event_list_, M_NET_MAX_EVENTS, -1);
     if (max_events == -1)
     {
         return CheckError();

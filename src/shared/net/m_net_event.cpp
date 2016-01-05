@@ -9,15 +9,13 @@ MNetEvent::MNetEvent(MSocket *p_sock, MNetEventHandler *p_event_handler
     ,read_cb_(read_cb)
     ,write_cb_(write_cb)
     ,error_cb_(error_cb)
-    ,enable_read_(false)
-    ,enable_write_(false)
+    ,events_actived_(false)
 {
 }
 
 MNetEvent::~MNetEvent()
 {
-    EnableRead(false);
-    EnableWrite(false);
+    DisableEvents();
 }
 
 void MNetEvent::SetSocket(MSocket *p_sock)
@@ -70,12 +68,8 @@ std::function<void (MNetError)>& MNetEvent::GetErrorCallback()
     return error_cb_;
 }
 
-MNetError MNetEvent::EnableRead(bool enable)
+MNetError MNetEvent::EnableEvents(int events)
 {
-    if (enable == enable_read_)
-    {
-        return MNetError::No;
-    }
     if (!p_sock_)
     {
         return MNetError::SockInvalid;
@@ -84,106 +78,41 @@ MNetError MNetEvent::EnableRead(bool enable)
     {
         return MNetError::EventHandlerInvalid;
     }
-    if (enable)
+    if (events_actived_)
     {
-        if (enable_write_)
+        MNetError err = p_event_handler_->ModEvent(p_sock_->GetHandler(), events, this);
+        if (err != MNetError::No)
         {
-            int events = M_NET_EVENT_READ | M_NET_EVENT_WRITE | M_NET_EVENT_EDGE;
-            MNetError err = p_event_handler_->ModEvent(p_sock_->GetHandler(), events, this);
-            if (err != MNetError::No)
-            {
-                return err;
-            }
-        }
-        else
-        {
-            int events = M_NET_EVENT_READ | M_NET_EVENT_EDGE;
-            MNetError err = p_event_handler_->AddEvent(p_sock_->GetHandler(), events, this);
-            if (err != MNetError::No)
-            {
-                return err;
-            }
+            return err;
         }
     }
     else
     {
-        if (enable_write_)
+        MNetError err = p_event_handler_->AddEvent(p_sock_->GetHandler(), events, this);
+        if (err != MNetError::No)
         {
-            int events = M_NET_EVENT_WRITE;
-            MNetError err = p_event_handler_->ModEvent(p_sock_->GetHandler(), events, this);
-            if (err != MNetError::No)
-            {
-                return err;
-            }
+            return err;
         }
-        else
-        {
-            MNetError err = p_event_handler_->DelEvent(p_sock_->GetHandler());
-            if (err != MNetError::No)
-            {
-                return err;
-            }
-        }
+        events_actived_ = true;
     }
-    enable_read_ = enable;
+    return MNetError::No;
 }
 
-MNetError MNetEvent::EnableWrite(bool enable)
+MNetError MNetEvent::DisableEvents()
 {
-    if (enable == enable_write_)
+    if (events_actived_)
     {
-        return MNetError::No;
-    }
-    if (!p_sock_)
-    {
-        return MNetError::SockInvalid;
-    }
-    if (!p_event_handler_)
-    {
-        return MNetError::EventHandlerInvalid;
-    }
-    if (enable)
-    {
-        if (enable_read_)
+        if (!p_sock_)
         {
-            int events = M_NET_EVENT_READ | M_NET_EVENT_WRITE | M_NET_EVENT_EDGE;
-            MNetError err = p_event_handler_->ModEvent(p_sock_->GetHandler(), events, this);
-            if (err != MNetError::No)
-            {
-                return err;
-            }
+            return MNetError::SockInvalid;
         }
-        else
+        MNetError err = p_event_handler_->DelEvent(p_sock_->GetHandler());
+        if (err != MNetError::No)
         {
-            int events = M_NET_EVENT_WRITE;
-            MNetError err = p_event_handler_->AddEvent(p_sock_->GetHandler(), events, this);
-            if (err != MNetError::No)
-            {
-                return err;
-            }
+            return err;
         }
     }
-    else
-    {
-        if (enable_read_)
-        {
-            int events = M_NET_EVENT_READ | M_NET_EVENT_EDGE;
-            MNetError err = p_event_handler_->ModEvent(p_sock_->GetHandler(), events, this);
-            if (err != MNetError::No)
-            {
-                return err;
-            }
-        }
-        else
-        {
-            MNetError err = p_event_handler_->DelEvent(p_sock_->GetHandler());
-            if (err != MNetError::No)
-            {
-                return err;
-            }
-        }
-    }
-    enable_write_ = enable;
+    return MNetError::No;
 }
 
 void MNetEvent::OnReadCallback()
