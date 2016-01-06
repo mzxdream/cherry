@@ -13,6 +13,8 @@ enum class MNetError
     OutOfMemory = 7,
     SockInvalid = 8,
     EventHandlerInvalid = 9,
+    BufferInsufficient = 10,
+    BufferOverflow = 11,
 };
 
 #endif
