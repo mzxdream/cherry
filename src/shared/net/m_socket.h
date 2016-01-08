@@ -50,8 +50,6 @@ public:
     const std::string& GetIP() const;
     unsigned short GetPort() const;
 private:
-    MNetError CheckError();
-private:
     int sock_;
     std::string ip_;
     unsigned short port_;

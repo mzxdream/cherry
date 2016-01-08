@@ -1,19 +1,23 @@
 #include <net/m_net_connector.h>
+#include <net/m_socket.h>
 #include <net/m_net_listener.h>
-#include <net/m_net_event_handler.h>
+#include <net/m_net_event_loop.h>
 #include <cstring>
 
-MNetConnector::MNetConnector(MSocket *p_sock, MNetListener *p_listener, MNetEventHandler *p_event_handler
-        , std::function<void ()> read_cb, std::function<void ()> write_complete_cb, std::function<void (MNetError)> error_cb
+MNetConnector::MNetConnector(MSocket *p_sock, MNetListener *p_listener, MNetEventLoop *p_event_loop
+        , const std::function<void ()> &read_cb, const std::function<void ()> &write_complete_cb, const std::function<void (MNetError)> &error_cb
         , bool need_free_sock, size_t read_len, size_t write_len)
     :p_sock_(p_sock)
-    ,event_(p_sock, p_event_handler, nullptr, nullptr, nullptr)
+    ,event_(p_sock->GetHandler(), p_event_loop, nullptr, nullptr, nullptr)
     ,p_listener_(p_listener)
-    ,p_event_handler_(p_event_handler)
+    ,p_event_loop_(p_event_loop)
     ,read_cb_(read_cb)
     ,write_complete_cb_(write_complete_cb)
     ,error_cb_(error_cb)
     ,need_free_sock_(need_free_sock)
+    ,read_buffer_(read_len)
+    ,write_buffer_(write_len)
+    ,write_ready_(true)
 {
     event_.SetReadCallback(std::bind(&MNetConnector::OnReadCallback, this));
     event_.SetWriteCallback(std::bind(&MNetConnector::OnWriteCallback, this));
@@ -43,7 +47,7 @@ MNetEvent& MNetConnector::GetEvent()
     return event_;
 }
 
-void MNetListener::SetListener(MNetListener *p_listener)
+void MNetConnector::SetListener(MNetListener *p_listener)
 {
     p_listener_ = p_listener;
 }
@@ -53,17 +57,17 @@ MNetListener* MNetConnector::GetListener()
     return p_listener_;
 }
 
-void MNetConnector::SetEventHandler(MNetEventHandler *p_event_handler)
+void MNetConnector::SetEventLoop(MNetEventLoop *p_event_loop)
 {
-    p_event_handler_ = p_event_handler;
+    p_event_loop_ = p_event_loop;
 }
 
-MNetEventHandler* MNetConnector::GetEventHandler()
+MNetEventLoop* MNetConnector::GetEventLoop()
 {
-    return p_event_handler_;
+    return p_event_loop_;
 }
 
-void MNetConnector::SetReadCallback(std::function<void ()> read_cb)
+void MNetConnector::SetReadCallback(const std::function<void ()> &read_cb)
 {
     read_cb_ = read_cb;
 }
@@ -73,7 +77,7 @@ std::function<void ()>& MNetConnector::GetReadCallback()
     return read_cb_;
 }
 
-void MNetConnector::SetWriteCompleteCallback(std::function<void ()> write_complete_cb)
+void MNetConnector::SetWriteCompleteCallback(const std::function<void ()> &write_complete_cb)
 {
     write_complete_cb_ = write_complete_cb;
 }
@@ -83,7 +87,7 @@ std::function<void ()>& MNetConnector::GetWriteCompleteCallback()
     return write_complete_cb_;
 }
 
-void MNetConnector::SetErrorCallback(std::function<void (MNetError)> error_cb)
+void MNetConnector::SetErrorCallback(const std::function<void (MNetError)> &error_cb)
 {
     error_cb_ = error_cb;
 }
@@ -117,50 +121,32 @@ MNetError MNetConnector::EnableReadWrite(bool enable)
 
 MNetError MNetConnector::ReadBuf(void *p_buf, size_t len)
 {
-    std::lock_guard<std::mutex> lock(read_mtx_);
-    if (p_read_buf_end_ >= p_read_buf_start_)
+    if (!read_buffer_.Peek(p_buf, len))
     {
-        if (p_read_buf_end_ - p_read_buf_start_ < len)
-        {
-            return MNetError::BufferInsufficient;
-        }
-        memcpy(p_buf, p_read_buf_start_, len);
-        p_read_buf_start_ += len;
-        return MNetError::No;
+        return MNetError::BufferInsufficient;
     }
-    else
-    {
-        if (len <= (read_buf_len_ - (p_read_buf_start_ - p_read_buf_)))
-        {
-            memcpy(p_buf, p_read_buf_start_, len);
-            p_read_buf_start_ += len;
-            return MNetError::No;
-        }
-        else if (len <= (read_buf_len_ - (p_read_buf_start_ - p_read_buf_end_)))
-        {
-            size_t end_len = read_buf_len_ - (p_read_buf_start_ - p_read_buf_);
-            memcpy(p_buf, p_read_buf_start_, end_len);
-            p_read_buf_start_ += (read_buf_len_ - len);
-            memcpy(p_buf + end_len, p_read_buf_, p_read_buf_start_ - p_read_buf_);
-            return MNetError::No;
-        }
-        else
-        {
-            return MNetError::BufferInsufficient;
-        }
-    }
+    return MNetError::No;
 }
 
-MNetError MNetConnector::WriteBuf(const void *p_buf, size_t len)
+MNetError MNetConnector::WriteBuf(const char *p_buf, size_t len)
 {
     if (write_ready_)
     {
         std::pair<int, MNetError> ret = p_sock_->Send(p_buf, len);
+        if (ret.second == MNetError::No)
+        {
+            if (ret.first < len)
+            {
+                write_buffer_.Append(p_buf + ret.first, len - ret.first);
+                write_ready_ = false;
+                return event_.EnableEvents(M_NET_EVENT_READ|M_NET_EVENT_WRITE|M_NET_EVENT_EDGE);
+            }
+            return MNetError::No;
+        }
+        else if (ret.second == )
+        {
 
-    }
-    else
-    {
-        std::lock_guard<std::mutex> lock(write_mtx_);
+        }
     }
 }
 

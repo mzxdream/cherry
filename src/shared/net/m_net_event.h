@@ -4,27 +4,26 @@
 #include <net/m_net_common.h>
 #include <functional>
 
-class MNetEventHandler;
-class MSocket;
+class MNetEventLoop;
 
 class MNetEvent
 {
 public:
-    explicit MNetEvent(MSocket *p_sock, MNetEventHandler *p_event_handler
-        , std::function<void ()> read_cb, std::function<void ()> write_cb, std::function<void (MNetError)> error_cb);
+    explicit MNetEvent(int fd, MNetEventLoop *p_event_loop
+        , const std::function<void ()> &read_cb, const std::function<void ()> &write_cb, const std::function<void (MNetError)> &error_cb);
     ~MNetEvent();
     MNetEvent(const MNetEvent &) = delete;
     MNetEvent& operator=(const MNetEvent &) = delete;
 public:
-    void SetSocket(MSocket *p_sock);
-    MSocket* GetSocket();
-    void SetEventHandler(MNetEventHandler *p_event_handler);
-    MNetEventHandler* GetEventHandler();
-    void SetReadCallback(std::function<void ()> read_cb);
+    void SetFD(int fd);
+    int  GetFD() const;
+    void SetEventLoop(MNetEventLoop *p_event_loop);
+    MNetEventLoop* GetEventLoop();
+    void SetReadCallback(const std::function<void ()> &read_cb);
     std::function<void ()>& GetReadCallback();
-    void SetWriteCallback(std::function<void ()> write_cb);
+    void SetWriteCallback(const std::function<void ()> &write_cb);
     std::function<void ()>& GetWriteCallback();
-    void SetErrorCallback(std::function<void (MNetError)> error_cb);
+    void SetErrorCallback(const std::function<void (MNetError)> &error_cb);
     std::function<void (MNetError)>& GetErrorCallback();
 
     MNetError EnableEvents(int events);
@@ -34,8 +33,8 @@ public:
     void OnWriteCallback();
     void OnErrorCallback(MNetError err);
 private:
-    MSocket *p_sock_;
-    MNetEventHandler *p_event_handler_;
+    int fd_;
+    MNetEventLoop *p_event_loop_;
     std::function<void ()> read_cb_;
     std::function<void ()> write_cb_;
     std::function<void (MNetError)> error_cb_;

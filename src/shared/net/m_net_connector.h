@@ -2,17 +2,17 @@
 #define _M_NET_CONNECTOR_H_
 
 #include <net/m_net_event.h>
-#include <mutex>
+#include <util/m_circle_buffer.h>
 
 class MSocket;
 class MNetListener;
-class MNetEventHandler;
+class MNetEventLoop;
 
 class MNetConnector
 {
 public:
-    MNetConnector(MSocket *p_sock, MNetListener *p_listener, MNetEventHandler *p_event_handler
-        , std::function<void ()> read_cb, std::function<void ()> write_complete_cb, std::function<void (MNetError)> error_cb
+    explicit MNetConnector(MSocket *p_sock, MNetListener *p_listener, MNetEventLoop *p_event_loop
+        , const std::function<void ()> &read_cb, const std::function<void ()> &write_complete_cb, const std::function<void (MNetError)> &error_cb
         , bool need_free_sock, size_t read_len, size_t write_len);
     ~MNetConnector();
     MNetConnector(const MNetConnector &) = delete;
@@ -23,13 +23,13 @@ public:
     MNetEvent& GetEvent();
     void SetListener(MNetListener *p_listener);
     MNetListener* GetListener();
-    void SetEventHandler(MNetEventHandler *p_event_handler);
-    MNetEventHandler* GetEventHandler();
-    void SetReadCallback(std::function<void ()> read_cb);
+    void SetEventLoop(MNetEventLoop *p_event_loop);
+    MNetEventLoop* GetEventLoop();
+    void SetReadCallback(const std::function<void ()> &read_cb);
     std::function<void ()>& GetReadCallback();
-    void SetWriteCompleteCallback(std::function<void ()> write_complete_cb);
+    void SetWriteCompleteCallback(const std::function<void ()> &write_complete_cb);
     std::function<void ()>& GetWriteCompleteCallback();
-    void SetErrorCallback(std::function<void (MNetError)> error_cb);
+    void SetErrorCallback(const std::function<void (MNetError)> &error_cb);
     std::function<void (MNetError)>& GetErrorCallback();
     void SetNeedFreeSock(bool need);
     bool GetNeedFreeSock() const;
@@ -37,7 +37,7 @@ public:
     MNetError EnableReadWrite(bool enable);
 
     MNetError ReadBuf(void *p_buf, size_t len);
-    MNetError WriteBuf(const void *p_buf, size_t len);
+    MNetError WriteBuf(const char *p_buf, size_t len);
 public:
     void OnReadCallback();
     void OnWriteCallback();
@@ -46,22 +46,14 @@ private:
     MSocket *p_sock_;
     MNetEvent event_;
     MNetListener *p_listener_;
-    MNetEventHandler *p_event_handler_;
+    MNetEventLoop *p_event_loop_;
     std::function<void ()> read_cb_;
     std::function<void ()> write_complete_cb_;
     std::function<void (MNetError)> error_cb_;
     bool need_free_sock_;
-    char *p_read_buf_;
-    size_t read_buf_len_;
-    char *p_read_buf_start_;
-    char *p_read_buf_end_;
-    std::mutex read_mtx_;
-    char *p_write_buf_;
-    size_t write_buf_len_;
-    char *p_write_buf_start_;
-    char *p_write_buf_end_;
+    MCircleBuffer read_buffer_;
+    MCircleBuffer write_buffer_;
     bool write_ready_;
-    std::mutex write_mtx_;
 };
 
 #endif

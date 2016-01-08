@@ -18,7 +18,7 @@ MSocket::~MSocket()
 
 MNetError MSocket::Attach(int sock)
 {
-    if (sock >= 0 && sock_ != sock)
+    if (sock_ != sock)
     {
         MNetError err = Close();
         if (err != MNetError::No)
@@ -45,18 +45,18 @@ MNetError MSocket::Create(MSocketFamily family, MSocketType type, MSocketProtoco
     }
     if ((sock_ = socket(static_cast<int>(family), static_cast<int>(type), static_cast<int>(proto))) == -1);
     {
-        return CheckError();
+        return MNetCheckLastError();
     }
     return MNetError::No;
 }
 
 MNetError MSocket::Close()
 {
-    if (sock_ < 0)
+    if (sock_ >= 0)
     {
         if (close(sock_) == -1)
         {
-            return CheckError();
+            return MNetCheckLastError();
         }
         sock_ = -1;
     }
@@ -79,7 +79,7 @@ MNetError MSocket::Bind(const std::string &ip, unsigned short port)
     addr.sin_port = htons(port);
     if (bind(sock_, reinterpret_cast<struct sockaddr*>(&addr), sizeof(addr)) == -1)
     {
-        return CheckError();
+        return MNetCheckLastError();
     }
     ip_ = ip;
     port_ = port;
@@ -90,7 +90,7 @@ MNetError MSocket::Listen(int backlog)
 {
     if (listen(sock_, backlog) == -1)
     {
-        return CheckError();
+        return MNetCheckLastError();
     }
     return MNetError::No;
 }
@@ -102,7 +102,7 @@ MNetError MSocket::Accept(MSocket &sock)
     int fd = accept(sock_, reinterpret_cast<struct sockaddr*>(&addr), &len);
     if (fd == -1)
     {
-        return CheckError();
+        return MNetCheckLastError();
     }
     MNetError err = sock.Attach(fd);
     if (err != MNetError::No)
@@ -132,27 +132,27 @@ MNetError MSocket::Connect(const std::string &ip, unsigned short port)
     addr.sin_port = htons(port);
     if (connect(sock_, reinterpret_cast<struct sockaddr*>(&addr), sizeof(addr)) == -1)
     {
-        return CheckError();
+        return MNetCheckLastError();
     }
     return MNetError::No;
 }
 
 std::pair<int, MNetError> MSocket::Send(const char *p_buf, int len)
 {
-    int send_len = 0;
-    if ((send_len = send(sock_, p_buf, len, 0)) == -1)
+    int send_len = send(sock_, p_buf, len, 0);
+    if (send_len == -1)
     {
-        return std::make_pair(0, CheckError());
+        return std::make_pair(send_len, MNetCheckLastError());
     }
     return std::make_pair(send_len, MNetError::No);
 }
 
 std::pair<int, MNetError> MSocket::Recv(void *p_buf, int len)
 {
-    int recv_len = 0;
-    if ((recv_len = recv(sock_, p_buf, len, 0)) == -1)
+    int recv_len = recv(sock_, p_buf, len, 0);
+    if (recv_len == -1)
     {
-        return std::make_pair(0, CheckError());
+        return std::make_pair(recv_len, MNetCheckLastError());
     }
     return std::make_pair(recv_len, MNetError::No);
 }
@@ -162,7 +162,7 @@ MNetError MSocket::SetBlock(bool block)
     int flag = fcntl(sock_, F_GETFL, 0);
     if (flag < 0)
     {
-        return CheckError();
+        return MNetCheckLastError();
     }
     if (block)
     {
@@ -174,7 +174,7 @@ MNetError MSocket::SetBlock(bool block)
     }
     if (fcntl(sock_, flag) < 0)
     {
-        return CheckError();
+        return MNetCheckLastError();
     }
     return MNetError::No;
 }
@@ -184,7 +184,7 @@ MNetError MSocket::SetReUseAddr(bool re_use)
     int reuse = re_use ? 1 : 0;
     if (setsockopt(sock_, SOL_SOCKET, SO_REUSEADDR, reinterpret_cast<const char*>(&reuse), sizeof(reuse)) < 0)
     {
-        return CheckError();
+        return MNetCheckLastError();
     }
     return MNetError::No;
 }
@@ -202,22 +202,4 @@ const std::string& MSocket::GetIP() const
 unsigned short MSocket::GetPort() const
 {
     return port_;
-}
-
-MNetError MSocket::CheckError()
-{
-    if (errno == EINPROGRESS)
-    {
-        return MNetError::InProgress;
-    }
-    else if (errno == EAGAIN
-        || errno == EWOULDBLOCK)
-    {
-        return MNetError::Again;
-    }
-    else if (errno == EINTR)
-    {
-        return MNetError::InterruptedSysCall;
-    }
-    return MNetError::Unknown;
 }

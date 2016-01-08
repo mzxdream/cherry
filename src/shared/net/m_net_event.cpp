@@ -1,11 +1,10 @@
 #include <net/m_net_event.h>
-#include <net/m_socket.h>
-#include <net/m_net_event_handler.h>
+#include <net/m_net_event_loop.h>
 
-MNetEvent::MNetEvent(MSocket *p_sock, MNetEventHandler *p_event_handler
-    , std::function<void ()> read_cb, std::function<void ()> write_cb, std::function<void (MNetError)> error_cb)
-    :p_sock_(p_sock)
-    ,p_event_handler_(p_event_handler)
+MNetEvent::MNetEvent(int fd, MNetEventLoop *p_event_loop
+    , const std::function<void ()> &read_cb, const std::function<void ()> &write_cb, const std::function<void (MNetError)> &error_cb)
+    :fd_(fd)
+    ,p_event_loop_(p_event_loop)
     ,read_cb_(read_cb)
     ,write_cb_(write_cb)
     ,error_cb_(error_cb)
@@ -18,27 +17,27 @@ MNetEvent::~MNetEvent()
     DisableEvents();
 }
 
-void MNetEvent::SetSocket(MSocket *p_sock)
+void MNetEvent::SetFD(int fd)
 {
-    p_sock_ = p_sock;
+    fd_ = fd;
 }
 
-MSocket* MNetEvent::GetSocket()
+int MNetEvent::GetFD() const
 {
-    return p_sock_;
+    return fd_;
 }
 
-void MNetEvent::SetEventHandler(MNetEventHandler *p_event_handler)
+void MNetEvent::SetEventLoop(MNetEventLoop *p_event_loop)
 {
-    p_event_handler_ = p_event_handler;
+    p_event_loop_ = p_event_loop;
 }
 
-MNetEventHandler* MNetEvent::GetEventHandler()
+MNetEventLoop* MNetEvent::GetEventLoop()
 {
-    return p_event_handler_;
+    return p_event_loop_;
 }
 
-void MNetEvent::SetReadCallback(std::function<void ()> read_cb)
+void MNetEvent::SetReadCallback(const std::function<void ()> &read_cb)
 {
     read_cb_ = read_cb;
 }
@@ -48,17 +47,17 @@ std::function<void ()>& MNetEvent::GetReadCallback()
     return read_cb_;
 }
 
-void MNetEvent::SetWriteCallback(std::function<void ()> write_cb)
+void MNetEvent::SetWriteCallback(const std::function<void ()> &write_cb)
 {
     write_cb_ = write_cb;
 }
 
-std::function<void ()>* MNetEvent::GetWriteCallback()
+std::function<void ()>& MNetEvent::GetWriteCallback()
 {
     return write_cb_;
 }
 
-void MNetEvent::SetErrorCallback(std::function<void (MNetError)> error_cb)
+void MNetEvent::SetErrorCallback(const std::function<void (MNetError)> &error_cb)
 {
     error_cb_ = error_cb;
 }
@@ -70,17 +69,13 @@ std::function<void (MNetError)>& MNetEvent::GetErrorCallback()
 
 MNetError MNetEvent::EnableEvents(int events)
 {
-    if (!p_sock_)
+    if (!p_event_loop_)
     {
-        return MNetError::SockInvalid;
-    }
-    if (!p_event_handler_)
-    {
-        return MNetError::EventHandlerInvalid;
+        return MNetError::EventLoopInvalid;
     }
     if (events_actived_)
     {
-        MNetError err = p_event_handler_->ModEvent(p_sock_->GetHandler(), events, this);
+        MNetError err = p_event_loop_->ModEvent(fd_, events, this);
         if (err != MNetError::No)
         {
             return err;
@@ -88,7 +83,7 @@ MNetError MNetEvent::EnableEvents(int events)
     }
     else
     {
-        MNetError err = p_event_handler_->AddEvent(p_sock_->GetHandler(), events, this);
+        MNetError err = p_event_loop_->AddEvent(fd_, events, this);
         if (err != MNetError::No)
         {
             return err;
@@ -102,15 +97,16 @@ MNetError MNetEvent::DisableEvents()
 {
     if (events_actived_)
     {
-        if (!p_sock_)
+        if (!p_event_loop_)
         {
-            return MNetError::SockInvalid;
+            return MNetError::EventLoopInvalid;
         }
-        MNetError err = p_event_handler_->DelEvent(p_sock_->GetHandler());
+        MNetError err = p_event_loop_->DelEvent(fd_);
         if (err != MNetError::No)
         {
             return err;
         }
+        events_actived_ = false;
     }
     return MNetError::No;
 }
@@ -133,6 +129,7 @@ void MNetEvent::OnWriteCallback()
 
 void MNetEvent::OnErrorCallback(MNetError err)
 {
+    DisableEvents();
     if (error_cb_)
     {
         error_cb_(err);
