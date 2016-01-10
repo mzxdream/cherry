@@ -65,7 +65,7 @@ bool MCircleBuffer::Append(const char *p_buf, size_t len)
         {
             memcpy(p_end_, p_buf, len);
             p_end_ += len;
-            if (p_end_ - p_buf_ >= len)
+            if (p_end_ - p_buf_ >= len_)
             {
                 p_end_ -= len_;
             }
@@ -90,4 +90,84 @@ bool MCircleBuffer::Append(const char *p_buf, size_t len)
         p_end_ += len;
         return true;
     }
+}
+
+std::pair<char*, size_t> MCircleBuffer::GetNextCapacity()
+{
+    if (p_end_ >= p_start_)
+    {
+        size_t len = (p_buf_ + len_ - p_end_);
+        if (len >= len_)
+        {
+            --len;
+        }
+        return std::make_pair(p_end_, len);
+    }
+    else
+    {
+        size_t len = p_start_ - p_end_ - 1;
+        return std::make_pair(p_end_, len);
+    }
+}
+
+bool MCircleBuffer::AddEndLen(size_t len)
+{
+    if (p_end_ >= p_start_)
+    {
+        if (len >= len_ - (p_end_ - p_start_))
+        {
+            return false;
+        }
+        p_end_ += len;
+        if (p_end_ - p_buf_ >= len_)
+        {
+            p_end_ -= len_;
+        }
+    }
+    else
+    {
+        if (len >= p_start_ - p_end_)
+        {
+            return false;
+        }
+        p_end_ += len;
+    }
+    return true;
+}
+
+std::pair<const char*, size_t> MCircleBuffer::GetNextData()
+{
+    if (p_end_ >= p_start_)
+    {
+        return std::pair<const char*, size_t>(p_start_, p_end_ - p_start_);
+    }
+    else
+    {
+        return std::pair<const char*, size_t>(p_buf_, p_end_ - p_buf_);
+    }
+}
+
+bool MCircleBuffer::AddStartLen(size_t len)
+{
+    if (p_end_ >= p_start_)
+    {
+        if (len > p_end_ - p_start_)
+        {
+            return false;
+        }
+        p_start_ += len;
+    }
+    else
+    {
+        if (len > (len_ - (p_start_ - p_end_)))
+        {
+            return false;
+        }
+        p_start_ += len;
+        if (p_start_ >= p_buf_ + len_)
+        {
+            p_start_ -= len_;
+        }
+    }
+    return true;
 }

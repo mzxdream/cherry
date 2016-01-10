@@ -1,6 +1,8 @@
 #ifndef _M_CIRCLE_BUFFER_H_
 #define _M_CIRCLE_BUFFER_H_
 
+#include <utility>
+
 class MCircleBuffer
 {
 public:
@@ -11,6 +13,10 @@ public:
 public:
     bool Peek(void *p_buf, size_t len);
     bool Append(const char *p_buf, size_t len);
+    std::pair<char*, size_t> GetNextCapacity();
+    bool AddEndLen(size_t len);
+    std::pair<const char*, size_t> GetNextData();
+    bool AddStartLen(size_t len);
 private:
     char *p_buf_;
     size_t len_;

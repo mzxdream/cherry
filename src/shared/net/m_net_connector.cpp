@@ -2,7 +2,6 @@
 #include <net/m_socket.h>
 #include <net/m_net_listener.h>
 #include <net/m_net_event_loop.h>
-#include <cstring>
 
 MNetConnector::MNetConnector(MSocket *p_sock, MNetListener *p_listener, MNetEventLoop *p_event_loop
         , const std::function<void ()> &read_cb, const std::function<void ()> &write_complete_cb, const std::function<void (MNetError)> &error_cb
@@ -137,27 +136,139 @@ MNetError MNetConnector::WriteBuf(const char *p_buf, size_t len)
         {
             if (ret.first < len)
             {
-                write_buffer_.Append(p_buf + ret.first, len - ret.first);
+                if (!write_buffer_.Append(p_buf + ret.first, len - ret.first))
+                {
+                    return MNetError::BufferOverflow;
+                }
                 write_ready_ = false;
                 return event_.EnableEvents(M_NET_EVENT_READ|M_NET_EVENT_WRITE|M_NET_EVENT_EDGE);
             }
+            if (write_complete_cb_)
+            {
+                write_complete_cb_();
+            }
             return MNetError::No;
         }
-        else if (ret.second == )
+        else if (ret.second == MNetError::InterruptedSysCall
+            || ret.second == MNetError::Again)
         {
-
+            write_ready_ = false;
+            return event_.EnableEvents(M_NET_EVENT_READ|M_NET_EVENT_WRITE|M_NET_EVENT_EDGE);
         }
+        else
+        {
+            return MNetError::Unknown;
+        }
+    }
+    else
+    {
+        return write_buffer_.Append(p_buf, len) ? MNetError::No : MNetError::BufferOverflow;
     }
 }
 
 void MNetConnector::OnReadCallback()
 {
+    std::pair<char*, size_t> buf;
+    std::pair<int, MNetError> ret;
+    while (true)
+    {
+        buf = read_buffer_.GetNextCapacity();
+        if (!buf.first || buf.second == 0)
+        {
+            OnErrorCallback(MNetError::BufferOverflow);
+            return;
+        }
+        ret = p_sock_->Recv(buf.first, static_cast<int>(buf.second));
+        if (ret.second == MNetError::No)
+        {
+            if (ret.first == 0)
+            {
+                OnErrorCallback(MNetError::Disconnect);
+                return;
+            }
+            else
+            {
+                if (!read_buffer_.AddEndLen(ret.first))
+                {
+                    OnErrorCallback(MNetError::Unknown);
+                    return;
+                }
+                if (ret.first < buf.second)
+                {
+                    return;
+                }
+            }
+        }
+        else if (ret.second == MNetError::InterruptedSysCall
+            || ret.second == MNetError::Again)
+        {
+            if (read_cb_)
+            {
+                read_cb_();
+            }
+            return;
+        }
+        else
+        {
+            OnErrorCallback(ret.second);
+            return;
+        }
+    }
 }
 
 void MNetConnector::OnWriteCallback()
 {
+    std::pair<const char*, size_t> buf;
+    std::pair<int, MNetError> ret;
+    while (true)
+    {
+        buf = read_buffer_.GetNextData();
+        if (!buf.first || buf.second == 0)
+        {
+            MNetError err = event_.EnableEvents(M_NET_EVENT_READ|M_NET_EVENT_EDGE);
+            if (err != MNetError::No)
+            {
+                OnErrorCallback(err);
+                return;
+            }
+            write_ready_ = true;
+            if (write_complete_cb_)
+            {
+                write_complete_cb_();
+            }
+            return;
+        }
+        ret = p_sock_->Send(buf.first, static_cast<int>(buf.second));
+        if (ret.second == MNetError::No)
+        {
+            if (!write_buffer_.AddStartLen(ret.first))
+            {
+                OnErrorCallback(MNetError::Unknown);
+                return;
+            }
+            if (ret.first < buf.second)
+            {
+                return;
+            }
+        }
+        else if (ret.second == MNetError::InterruptedSysCall
+            || ret.second == MNetError::Again)
+        {
+            return;
+        }
+        else
+        {
+            OnErrorCallback(ret.second);
+            return;
+        }
+    }
 }
 
 void MNetConnector::OnErrorCallback(MNetError err)
 {
+    event_.DisableEvents();
+    if (error_cb_)
+    {
+        error_cb_(err);
+    }
 }
