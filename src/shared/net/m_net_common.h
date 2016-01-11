@@ -3,6 +3,8 @@
 
 #include <unistd.h>
 #include <sys/epoll.h>
+#include <errno.h>
+#include <cstddef>
 
 #define M_NET_EVENT_READ (EPOLLIN|EPOLLRDHUP)
 #define M_NET_EVENT_WRITE EPOLLOUT

@@ -1,10 +1,11 @@
 #include <net/m_net_event_loop.h>
 #include <net/m_net_event.h>
+#include <fcntl.h>
 
 MNetEventLoop::MNetEventLoop(size_t single_process_events)
     :epoll_fd_(-1)
     ,event_list_(single_process_events)
-    ,interrupter_({-1, -1})
+    ,interrupter_{-1, -1}
     ,event_count_(0)
 {
 }

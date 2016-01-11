@@ -7,7 +7,7 @@ MNetConnector::MNetConnector(MSocket *p_sock, MNetListener *p_listener, MNetEven
         , const std::function<void ()> &read_cb, const std::function<void ()> &write_complete_cb, const std::function<void (MNetError)> &error_cb
         , bool need_free_sock, size_t read_len, size_t write_len)
     :p_sock_(p_sock)
-    ,event_(p_sock->GetHandler(), p_event_loop, nullptr, nullptr, nullptr)
+    ,event_(p_sock ? p_sock->GetHandler() : -1, p_event_loop, nullptr, nullptr, nullptr)
     ,p_listener_(p_listener)
     ,p_event_loop_(p_event_loop)
     ,read_cb_(read_cb)
@@ -18,9 +18,6 @@ MNetConnector::MNetConnector(MSocket *p_sock, MNetListener *p_listener, MNetEven
     ,write_buffer_(write_len)
     ,write_ready_(true)
 {
-    event_.SetReadCallback(std::bind(&MNetConnector::OnReadCallback, this));
-    event_.SetWriteCallback(std::bind(&MNetConnector::OnWriteCallback, this));
-    event_.SetErrorCallback(std::bind(&MNetConnector::OnErrorCallback, this, std::placeholders::_1));
 }
 
 MNetConnector::~MNetConnector()
@@ -34,6 +31,7 @@ MNetConnector::~MNetConnector()
 void MNetConnector::SetSocket(MSocket *p_sock)
 {
     p_sock_ = p_sock;
+    event_.SetFD(p_sock_ ? p_sock_->GetHandler() : -1);
 }
 
 MSocket* MNetConnector::GetSocket()
@@ -59,6 +57,7 @@ MNetListener* MNetConnector::GetListener()
 void MNetConnector::SetEventLoop(MNetEventLoop *p_event_loop)
 {
     p_event_loop_ = p_event_loop;
+    event_.SetEventLoop(p_event_loop_);
 }
 
 MNetEventLoop* MNetConnector::GetEventLoop()
@@ -110,6 +109,9 @@ MNetError MNetConnector::EnableReadWrite(bool enable)
 {
     if (enable)
     {
+        event_.SetReadCallback(std::bind(&MNetConnector::OnReadCallback, this));
+        event_.SetWriteCallback(std::bind(&MNetConnector::OnWriteCallback, this));
+        event_.SetErrorCallback(std::bind(&MNetConnector::OnErrorCallback, this, std::placeholders::_1));
         return event_.EnableEvents(M_NET_EVENT_READ|M_NET_EVENT_EDGE);
     }
     else

@@ -2,6 +2,7 @@
 #define _M_CIRCLE_BUFFER_H_
 
 #include <utility>
+#include <cstddef>
 
 class MCircleBuffer
 {
