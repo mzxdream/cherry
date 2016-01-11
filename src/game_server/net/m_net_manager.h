@@ -1,12 +1,11 @@
 #ifndef _M_NET_MANAGER_H_
 #define _M_NET_MANAGER_H_
 
-#include <net/m_net_common.h>
-#include <net/m_net_event_handler.h>
-#include <vector>
 #include <net/m_socket.h>
 #include <net/m_net_listener.h>
 #include <net/m_net_connector.h>
+#include <net/m_net_event.h>
+#include <net/m_net_event_handler.h>
 
 class MNetManager
 {
