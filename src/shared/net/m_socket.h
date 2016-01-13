@@ -49,6 +49,8 @@ public:
     int GetHandler() const;
     const std::string& GetIP() const;
     unsigned short GetPort() const;
+public:
+    MNetError CreateNonblockReuseListener(const std::string &ip, unsigned short port, int backlog);
 private:
     int sock_;
     std::string ip_;

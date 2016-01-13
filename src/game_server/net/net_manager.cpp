@@ -1,174 +1,168 @@
 #include <net/net_manager.h>
+#include <lock_guard>
 
-MNetManager::MNetManager(size_t handler_count)
-    :handler_list_(handler_count, nullptr)
+NetThread::NetThread()
 {
 }
 
-MNetManager::~MNetManager()
+NetThread::~NetThread()
+{
+}
+
+bool NetThread::Init()
+{
+    return event_loop_.Create() == MNetError::No;
+}
+
+void NetThread::Close()
+{
+    StopAndJoin();
+    event_loop_.Close();
+}
+
+MNetEventLoop& NetThread::GetEventLoop()
+{
+    return event_loop_;
+}
+
+void NetThread::AddCallback(const std::function<void ()> &callback)
+{
+    {
+        std::lock_guard<std::mutex> lock(callback_mutex_);
+        callback_list_.push_back(callback);
+    }
+    event_loop_.Interrupt();
+}
+
+void NetThread::DoRun()
+{
+    event_loop_.ProcessEvents();
+    std::list<std::function<void ()> > cb_list;
+    {
+        std::lock_guard<std::mutex> lock(callback_mutex_);
+        cb_list.swap(callback_list_);
+    }
+    for (auto &cb : cb_list)
+    {
+        if (cb)
+        {
+            cb();
+        }
+    }
+}
+
+NetManager::NetManager()
+{
+}
+
+NetManager::~NetManager()
 {
     Close();
 }
 
-MNetError MNetManager::Init()
+bool NetManager::Init(size_t work_count)
 {
-    for (size_t i = 0; i < handler_list_.size(); ++i)
+    work_list_.resize(work_count);
+    for (auto &work : work_list_)
     {
-        handler_list_[i] = new MNetEventHandler();
-        if (handler_list_[i] == nullptr)
+        if (!work.Init())
         {
-            return MNetError::OutOfMemory;
-        }
-        MNetError err = handler_list_[i].Create();
-        if (err != MNetError::No)
-        {
-            return err;
-        }
-        if (handler_list_[i].Start() != MThreadError::No)
-        {
-            return MNetError::Unknown;
+            return false;
         }
     }
-    return MNetError::No;
+    return true;
 }
 
-MNetError MNetManager::Close()
+void NetManager::Close()
 {
-    for ()
-    for (size_t i = 0; i < handler_list_.size(); ++i)
+    for (auto &work : work_list_)
     {
-        if (handler_list_[i])
-        {
-            handler_list_[i].StopAndJoin();
-        }
+        work.Close();
+    }
+    for (auto &listener : listener_list_)
+    {
+        delete listener;
     }
 }
 
-size_t MNetManager::GetHandlerCount() const
+bool NetManager::AddListener(const std::string &ip, unsigned short port)
 {
-    return handler_list_.size();
-}
-
-MNetEventHandler* MNetManager::GetEventHandler(size_t index)
-{
-    if (index >= handler_list_.size())
-    {
-        return nullptr;
-    }
-    return handler_list_[index];
-}
-
-MNetEventHandler* MNetManager::GetMinEventsEventHandler()
-{
-    if (handler_list_.empty())
-    {
-        return nullptr;
-    }
-    MNetEventHandler *p_handler = handler_list_[0];
-    size_t count = handler_list_[0]->GetEventCount();
-    for (size_t i = 1; i < handler_list_.size(); ++i)
-    {
-        if (count > handler_list_[i].GetEventCount())
-        {
-            p_handler = handler_list_[i];
-            count = handler_list_[i]->GetEventCount();
-        }
-    }
-    return p_handler;
-}
-
-MNetError MNetManager::AddListener(const std::string &ip, unsigned short port, int backlog, std::function<void (MNetConnector*)> accept_cb)
-{
-
     MSocket *p_sock = new MSocket();
     if (!p_sock)
     {
-        return MNetError::OutOfMemory;
+        return false;
     }
-    MNetError err = MNetError::No;
-    do
-    {
-        err = p_sock->Create(MSocketFamily::IPV4, MSocketType::TCP, MSocketProtocol::Default);
-        if (err != MNetError::No)
-        {
-            break;
-        }
-        err = p_sock->SetBlock(false);
-        if (err != MNetError::No)
-        {
-            break;
-        }
-        err = p_sock->SetReUseAddr(true);
-        if (err != MNetError::No)
-        {
-            break;
-        }
-        err = p_sock->Bind(ip, port);
-        if (err != MNetError::No)
-        {
-            break;
-        }
-        err = p_sock->Listen(backlog);
-        if (err != MNetError::No)
-        {
-            break;
-        }
-
-        MNetEventHandler *p_handler = GetMinEventsEventHandler();
-        if (!p_handler)
-        {
-            err = MNetError::EventHandlerInvalid;
-            break;
-        }
-        MNetListener *p_listener = new MNetListener(*p_sock, *p_handler, std::bind(&MNetManager::OnAcceptCallback, this, listener_list_.size()));
-        if (!p_listener)
-        {
-            err = MNetError::OutOfMemory;
-            break;
-        }
-        err = p_listener->EnableAccept();
-        if (err != MNetError::No)
-        {
-            delete p_listener;
-            break;
-        }
-        listener_event_list_.push_back(std::pair<MNetListener*, std::function<void (MNetConnector*)> >(p_listener, accept_cb));
-        err = MNetError::No;
-    } while (0);
-    if (err != MNetError::No)
+    if (p_sock->CreateNonblockReuseListener(ip, port, 128) != MNetError::No)
     {
         delete p_sock;
-        return err;
+        return false;
     }
-    listener_sock_list_.push_back(p_sock);
-    return MNetError::No;
+    MNetListener *p_listener = new MNetListener(p_sock, GetMinEventsEventLoop(), nullptr, nullptr, true, 5);
+    if (!p_listener)
+    {
+        return false;
+    }
+    listener_list_.push_back(p_listener);
+
+    p_listener->SetAcceptCallback(std::bind(&NetManager::OnConnectCallback, this, std::placeholders::_1));
+    p_listener->SetErrorCallback(std::bind(&NetManager::OnListenerErrorCallback, this, listener_list_.size()-1, std::placeholders::_1));
+
+    MNetError err = p_listener->EnableAccept(true);
+    if (err != MNetError::No)
+    {
+        return false;
+    }
+    return true;
 }
 
-void MNetManager::OnAcceptCallback(size_t index)
+void NetManager::CloseConnect(MNetConnector *p_connector)
 {
-    if (index >= listener_list_.size())
+    if (!p_connector)
     {
         return;
     }
-    MNetListener *p_listener = listener_event_list_[index].first;
-    std::function<void (MNetConnector*)> callback = listener_event_list_[index].second;
-    if (!p_listener || !callback)
+    if (!p_connector->GetEventLoop())
     {
         return;
-    }
-    MSocket sock;
-    while (p_listener->Accept(sock) == MNetError::No)
-    {
-        MNetEventHandler *p_handler = GetMinEventsEventHandler();
-        if (!p_handler)
-        {
-            return;
-        }
-        MNetConnector *p_connector = new MNetConnector(sock.Detach(), *p_listener, *p_handler);
-        if (p_connector)
-        {
-            callback(p_connector);
-        }
     }
 }
 
+void NetManager::OnConnectCallback(MSocket *p_sock)
+{
+
+}
+
+void NetManager::OnListenerErrorCallback(size_t pos, MNetError err)
+{
+    //not thread safe
+    if (listener_list_.size() >= pos)
+    {
+        return;
+    }
+    MNetListener *p_listener = listener_list_[pos];
+    if (!p_listener)
+    {
+        return;
+    }
+    std::cout << "listener ip:" << p_listener->GetSocket()->GetIP()
+        << " port:" << p_listener->GetSocket()->GetPort() << std::endl;
+}
+
+MNetEventLoop* NetManager::GetMinEventsEventLoop()
+{
+    if (work_list_.empty())
+    {
+        return nullptr;
+    }
+    MNetEventLoop *p_event_loop = &(work_list_[0].GetEventLoop());
+    size_t count = work_list_[0].GetEventLoop().GetEventCount();
+    for (size_t i = 1; i < work_list_.size(); ++i)
+    {
+        if (count > work_list_[i].GetEventLoop().GetEventCount())
+        {
+            count = work_list_[i].GetEventLoop().GetEventCount();
+            p_event_loop = &(work_list_[0].GetEventLoop());
+        }
+    }
+    return p_event_loop;
+}

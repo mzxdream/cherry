@@ -203,3 +203,33 @@ unsigned short MSocket::GetPort() const
 {
     return port_;
 }
+
+MNetError MSocket::CreateNonblockReuseListener(const std::string &ip, unsigned short port, int backlog)
+{
+    MNetError err = Create(MSocketFamily::IPV4, MSocketType::TCP, MSocketProtocol::Default);
+    if (err != MNetError::No)
+    {
+        return err;
+    }
+    err = SetBlock(false);
+    if (err != MNetError::No)
+    {
+        return err;
+    }
+    err = SetReUseAddr(true);
+    if (err != MNetError::No)
+    {
+        return err;
+    }
+    err = Bind(ip, port);
+    if (err != MNetError::No)
+    {
+        return err;
+    }
+    err = Listen(backlog);
+    if (err != MNetError::No)
+    {
+        return err;
+    }
+    return MNetError::No;
+}
