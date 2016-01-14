@@ -29,9 +29,13 @@ private:
     std::mutex callback_mutex_;
 };
 
+struct NetSession
+{
+    MNetConnector *p_connector;
+    NetThread *p_loop_thread;
+};
 
 class NetManager
-    :public MSingleton<NetManager, std::mutex>
 {
 public:
     NetManager();
@@ -43,16 +47,20 @@ public:
     void Close();
 
     bool AddListener(const std::string &ip, unsigned short port);
-    void CloseConnect(MNetConnector *p_connector);
+    void CloseSession(NetSession *p_session);
+    void WriteSession(NetSession *p_session, void *p_buf, size_t len);
 public:
     void OnConnectCallback(MSocket *p_sock);
     void OnListenerErrorCallback(size_t pos, MNetError err);
+    void OnReadCallback(NetSession *p_session);
+    void OnCloseCallback(NetSession *p_session, MNetError err);
 private:
-    bool GetMinEventsWork();
+    NetThread* GetMinEventsThread();
 private:
-    std::vector<NetThread> work_list_;
+    std::vector<NetThread*> work_list_;
     std::vector<MNetListener*> listener_list_;
-    std::set<MNetConnector*> connector_list_;
+    std::mutex session_mutex_;
+    std::set<NetSession*> session_list_;
 };
 
 #endif
