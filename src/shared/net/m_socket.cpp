@@ -43,7 +43,8 @@ MNetError MSocket::Create(MSocketFamily family, MSocketType type, MSocketProtoco
     {
         return MNetError::Created;
     }
-    if ((sock_ = socket(static_cast<int>(family), static_cast<int>(type), static_cast<int>(proto))) == -1);
+    sock_ = socket(static_cast<int>(family), static_cast<int>(type), static_cast<int>(proto));
+    if (sock_ == -1)
     {
         return MNetCheckLastError();
     }
@@ -160,7 +161,7 @@ std::pair<int, MNetError> MSocket::Recv(void *p_buf, int len)
 MNetError MSocket::SetBlock(bool block)
 {
     int flag = fcntl(sock_, F_GETFL, 0);
-    if (flag < 0)
+    if (flag == -1)
     {
         return MNetCheckLastError();
     }
@@ -172,7 +173,8 @@ MNetError MSocket::SetBlock(bool block)
     {
         flag |= O_NONBLOCK;
     }
-    if (fcntl(sock_, flag) < 0)
+    flag = fcntl(sock_, F_SETFL, flag);
+    if (flag == -1)
     {
         return MNetCheckLastError();
     }

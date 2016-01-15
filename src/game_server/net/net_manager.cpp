@@ -1,6 +1,6 @@
 #include <net/net_manager.h>
-#include <lock_guard>
 #include <iostream>
+#include <cstring>
 
 NetThread::NetThread()
 {
@@ -12,7 +12,11 @@ NetThread::~NetThread()
 
 bool NetThread::Init()
 {
-    return event_loop_.Create() == MNetError::No;
+    if (event_loop_.Create() == MNetError::No)
+    {
+        return Start() == MThreadError::No;
+    }
+    return true;
 }
 
 void NetThread::Close()
@@ -67,7 +71,7 @@ bool NetManager::Init(size_t work_count)
     for (auto &work : work_list_)
     {
         work = new NetThread();
-        if (!p_work || !p_work.Init())
+        if (!work || !work->Init())
         {
             return false;
         }
@@ -107,7 +111,8 @@ bool NetManager::AddListener(const std::string &ip, unsigned short port)
         delete p_sock;
         return false;
     }
-    MNetListener *p_listener = new MNetListener(p_sock, GetMinEventsEventLoop(), nullptr, nullptr, true, 5);
+    NetThread *p_net_thread = GetMinEventsThread();
+    MNetListener *p_listener = new MNetListener(p_sock, &(p_net_thread->GetEventLoop()), nullptr, nullptr, true, 5);
     if (!p_listener)
     {
         return false;
@@ -176,21 +181,32 @@ void NetManager::WriteSession(NetSession *p_session, char *p_buf, size_t len)
     p_session->p_loop_thread->AddCallback(std::bind(OnWriteSessionCallback, p_session, p_buf, len));
 }
 
+void NetManager::WriteAll(const char *p_buf, size_t len)
+{
+    std::lock_guard<std::mutex> lock(session_mutex_);
+    for (auto &it : session_list_)
+    {
+        char *p_tmp = new char[len];
+        memcpy(p_tmp, p_buf, len);
+        WriteSession(it, p_tmp, len);
+    }
+}
+
 void NetManager::OnReadCallback(NetSession *p_session)
 {
     char tmp[10];
     if (p_session->p_connector->ReadBuf(tmp, 10) == MNetError::No)
     {
-        std::cout << p_session->p_connector->GetListener()->GetSocket()->GetIP() << " "
-            << p_session->p_connector->GetListener()->GetSocket()->GetPort() << " "
+        std::cout << p_session->p_connector->GetSocket()->GetIP() << " "
+            << p_session->p_connector->GetSocket()->GetPort() << " "
             << tmp << std::endl;
     }
 }
 
 void NetManager::OnCloseCallback(NetSession *p_session, MNetError err)
 {
-    std::cout << p_session->p_connector->GetListener()->GetSocket()->GetIP() << " "
-        << p_session->p_connector->GetListener()->GetSocket()->GetPort() << " "
+    std::cout << p_session->p_connector->GetSocket()->GetIP() << " "
+        << p_session->p_connector->GetSocket()->GetPort() << " "
         << " has socket disconnect:" << static_cast<int>(err) << std::endl;
     std::lock_guard<std::mutex> lock(session_mutex_);
     auto it = session_list_.find(p_session);
@@ -225,9 +241,14 @@ void NetManager::OnConnectCallback(MNetListener *p_listener, MSocket *p_sock)
     p_session->p_loop_thread = p_loop_thread;
 
     std::lock_guard<std::mutex> lock(session_mutex_);
-    p_connector->SetReadCallback(std::bind(OnReadCallback, p_session));
-    p_connector->SetErrorCallback(std::bind(OnCloseCallback, p_session));
+    session_list_.insert(p_session);
+    p_connector->SetReadCallback(std::bind(&NetManager::OnReadCallback, this, p_session));
+    p_connector->SetErrorCallback(std::bind(&NetManager::OnCloseCallback, this, p_session, std::placeholders::_1));
     p_connector->EnableReadWrite(true);
+    std::cout << p_session->p_connector->GetSocket()->GetIP() << " "
+        << p_session->p_connector->GetSocket()->GetPort() << " "
+        << " has socket connect" << std::endl;
+
 }
 
 void NetManager::OnListenerErrorCallback(size_t pos, MNetError err)
@@ -258,7 +279,7 @@ NetThread* NetManager::GetMinEventsThread()
         if (count > work_list_[i]->GetEventLoop().GetEventCount())
         {
             count = work_list_[i]->GetEventLoop().GetEventCount();
-            p_event_loop = work_list_[i];
+            p_loop_thread = work_list_[i];
         }
     }
     return p_loop_thread;

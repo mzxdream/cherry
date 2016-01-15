@@ -1,2 +1,2 @@
 #!/bin/bash
-cd ../../build/shared && cmake ../../src/shared && make
+cd ../../build/shared && cmake -DCMAKE_BUILD_TYPE=Debug ../../src/shared && make

@@ -106,6 +106,10 @@ MNetError MNetListener::EnableAccept(bool enable)
 
 void MNetListener::OnAcceptCallback()
 {
+    if (!accept_cb_)
+    {
+        return;
+    }
     size_t count = single_accept_count_;
     while (count--)
     {
@@ -126,6 +130,7 @@ void MNetListener::OnAcceptCallback()
             }
             return;
         }
+        accept_cb_(p_conn_sock);
     }
 }
 

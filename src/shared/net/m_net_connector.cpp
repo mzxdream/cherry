@@ -136,7 +136,7 @@ MNetError MNetConnector::WriteBuf(const char *p_buf, size_t len)
         std::pair<int, MNetError> ret = p_sock_->Send(p_buf, len);
         if (ret.second == MNetError::No)
         {
-            if (ret.first < len)
+            if (static_cast<size_t>(ret.first) < len)
             {
                 if (!write_buffer_.Append(p_buf + ret.first, len - ret.first))
                 {
@@ -195,8 +195,12 @@ void MNetConnector::OnReadCallback()
                     OnErrorCallback(MNetError::Unknown);
                     return;
                 }
-                if (ret.first < buf.second)
+                if (static_cast<size_t>(ret.first) < buf.second)
                 {
+                    if (read_cb_)
+                    {
+                        read_cb_();
+                    }
                     return;
                 }
             }
@@ -248,7 +252,7 @@ void MNetConnector::OnWriteCallback()
                 OnErrorCallback(MNetError::Unknown);
                 return;
             }
-            if (ret.first < buf.second)
+            if (static_cast<size_t>(ret.first) < buf.second)
             {
                 return;
             }

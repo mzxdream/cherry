@@ -1,19 +1,23 @@
 #ifndef _NET_MANAGER_H_
 #define _NET_MANAGER_H_
 
+#include <net/m_socket.h>
 #include <net/m_net_event_loop.h>
+#include <net/m_net_connector.h>
+#include <net/m_net_listener.h>
 #include <thread/m_thread.h>
 #include <mutex>
 #include <functional>
 #include <list>
 #include <util/m_singleton.h>
+#include <set>
 
 class NetThread
     :public MThread
 {
 public:
     NetThread();
-    ~NetThread();
+    virtual ~NetThread();
     NetThread(const NetThread &) = delete;
     NetThread& operator=(const NetThread &) = delete;
 public:
@@ -48,9 +52,10 @@ public:
 
     bool AddListener(const std::string &ip, unsigned short port);
     void CloseSession(NetSession *p_session);
-    void WriteSession(NetSession *p_session, void *p_buf, size_t len);
+    void WriteSession(NetSession *p_session, char *p_buf, size_t len);
+    void WriteAll(const char *p_buf, size_t len);
 public:
-    void OnConnectCallback(MSocket *p_sock);
+    void OnConnectCallback(MNetListener *p_listener, MSocket *p_sock);
     void OnListenerErrorCallback(size_t pos, MNetError err);
     void OnReadCallback(NetSession *p_session);
     void OnCloseCallback(NetSession *p_session, MNetError err);

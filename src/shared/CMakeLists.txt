@@ -26,11 +26,12 @@ INCLUDE_DIRECTORIES(
 )
 
 LINK_DIRECTORIES(
-    ${PROJECT_SOURCE_DIR}/../lib
+    ${PROJECT_BINARY_DIR}/../../lib
 )
 
 LINK_LIBRARIES(
-
+    mysqlclient
+    pthread
 )
 
 SET(SRC_LIST

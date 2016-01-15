@@ -17,7 +17,6 @@ class MThread
 {
 protected:
     MThread();
-public:
     ~MThread();
     MThread(const MThread &) = delete;
     MThread& operator=(const MThread &) = delete;
