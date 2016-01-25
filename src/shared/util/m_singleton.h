@@ -1,10 +1,9 @@
 #ifndef _M_SINGLETON_H_
 #define _M_SINGLETON_H_
 
-#include <iostream>
-#include <mutex>
+#include <thread/m_null_mutex.h>
 
-template<typename TClass, typename TMutex = std::mutex>
+template<typename TClass, typename TMutex = MNullMutex>
 class MSingleton
 {
 protected:
