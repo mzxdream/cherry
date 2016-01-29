@@ -3,25 +3,7 @@
 
 #include <util/m_string.h>
 #include <util/m_convert.h>
-
-enum class MDbError
-{
-    No = 0,
-    Unknown = 1,
-    ConnectOpened = 2,
-    OutOfMemory = 3,
-    SetParamFailed = 4,
-    ConnectFailed = 5,
-    Disconnect = 6,
-    QueryFailed = 7,
-    GetResFailed = 8,
-    GetRowFailed = 9,
-    GetParamFailed = 10,
-    TypeNotSupport = 11,
-    NoData = 12,
-    ParamCountNotMatch = 13,
-    ParamCannotConvert = 14,
-};
+#include <util/m_logger.h>
 
 class MDbConnString
 {
@@ -32,10 +14,12 @@ public:
         std::string val_str;
         if (!GetParamValue(str, param, val_str, op, sep, trim))
         {
+            MLOG(MGetLibLogger(), MERR, "GetParamValue failed");
             return false;
         }
         if (!MConvertTo(val_str, val))
         {
+            MLOG(MGetLibLogger(), MERR, "convert ", val_str, " failed");
             return false;
         }
         return true;
@@ -45,12 +29,14 @@ public:
         size_t pos_start = str.find(param);
         if (pos_start == std::string::npos)
         {
+            MLOG(MGetLibLogger(), MERR, "can't find \"", param, "\" from \"", str, "\"");
             return false;
         }
         pos_start += param.size();
         pos_start = str.find(op, pos_start);
         if (pos_start == std::string::npos)
         {
+            MLOG(MGetLibLogger(), MERR, "can't find \"", op, "\" from \"", str, "\"");
             return false;
         }
         pos_start += op.size();
@@ -66,7 +52,6 @@ public:
         }
         return true;
     }
-
 };
 
 #endif

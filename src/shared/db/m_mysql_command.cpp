@@ -18,7 +18,7 @@ MMysqlCommand::~MMysqlCommand()
     }
 }
 
-MDbError MMysqlCommand::DoPrepair(const std::string &command)
+MError MMysqlCommand::DoPrepair(const std::string &command)
 {
     if (p_stmt_)
     {
@@ -28,52 +28,44 @@ MDbError MMysqlCommand::DoPrepair(const std::string &command)
     p_stmt_ = mysql_stmt_init(conn_.GetConnection());
     if (!p_stmt_)
     {
-        last_error_msg_ = MConcat("init stmt failed errorno:", mysql_errno(conn_.GetConnection()), "error:", mysql_error(conn_.GetConnection()));
-        last_error_ = MDbError::Unknown;
-        return last_error_;
+        MLOG(MGetLibLogger(), MERR, "init stmt failed errno:", mysql_errno(conn_.GetConnection()), " error:", mysql_error(conn_.GetConnection()));
+        return MError::Unknown;
     }
     if (mysql_stmt_prepare(p_stmt_, command.c_str(), command.size()) != 0)
     {
-        last_error_msg_ = MConcat("mysql prepare ", command, " failed errorno:", mysql_stmt_errno(p_stmt_), " error:", mysql_stmt_error(p_stmt_));
-        last_error_ = MDbError::Unknown;
-        return last_error_;
+        MLOG(MGetLibLogger(), MERR, "mysql prepare:", command, " failed errno:", mysql_stmt_errno(p_stmt_), " error:", mysql_stmt_error(p_stmt_));
+        return MError::Unknown;
     }
-    last_error_msg_ = "";
-    last_error_ = MDbError::No;
-    return last_error_;
+    return MError::No;
 }
 
-MDbError MMysqlCommand::DoBeforeAddParam()
+MError MMysqlCommand::DoBeforeAddParams()
 {
     in_params_.clear();
-    last_error_msg_ = "";
-    last_error_ = MDbError::No;
-    return last_error_;
+    return MError::No;
 }
 
-MDbError MMysqlCommand::DoGotoNextRecord()
+MError MMysqlCommand::DoGotoNextRecord()
 {
     int ret = mysql_stmt_fetch(p_stmt_);
     if (ret == 0)
     {
-        last_error_msg_ = "";
-        last_error_ = MDbError::No;
         cur_col_ = 0;
+        return MError::No;
     }
     else if (ret == MYSQL_NO_DATA)
     {
-        last_error_msg_ = "have no more data";
-        last_error_ = MDbError::NoData;
+        MLOG(MGetLibLogger(), MINFO, "have no more data");
+        return MError::NoData;
     }
     else
     {
-        last_error_msg_ = MConcat("next record errorno:", mysql_stmt_errno(p_stmt_), " error:", mysql_stmt_error(p_stmt_));
-        last_error_ = MDbError::Unknown;
+        MLOG(MGetLibLogger(), MINFO, "next record errno:", mysql_stmt_errno(p_stmt_), " error:", mysql_stmt_error(p_stmt_));
+        return MError::Unknown;
     }
-    return last_error_;
 }
 
-MDbError MMysqlCommand::DoGotoNextResult()
+MError MMysqlCommand::DoGotoNextResult()
 {
     int ret = mysql_stmt_next_result(p_stmt_);
     if (ret == 0)
@@ -82,122 +74,112 @@ MDbError MMysqlCommand::DoGotoNextResult()
     }
     else if (ret < 0)
     {
-        last_error_msg_ = MConcat("next result ret is ", ret);
-        last_error_ = MDbError::Unknown;
-        return last_error_;
+        MLOG(MGetLibLogger(), MWARN, "next result ret is ", ret);
+        return MError::Unknown;
     }
     else
     {
-        last_error_msg_ =  MConcat("next result errorno:", mysql_stmt_errno(p_stmt_), " error:", mysql_stmt_error(p_stmt_));
-        last_error_ = MDbError::Unknown;
-        return last_error_;
+        MLOG(MGetLibLogger(), MWARN, "next result errno:", mysql_stmt_errno(p_stmt_), " error:", mysql_stmt_error(p_stmt_));
+        return MError::Unknown;
     }
 }
 
-std::pair<unsigned, MDbError> MMysqlCommand::DoExecuteNonQuery()
+std::pair<unsigned, MError> MMysqlCommand::DoExecuteNonQuery()
 {
     int param_count = mysql_stmt_param_count(p_stmt_);
     if (static_cast<size_t>(param_count) != in_params_.size())
     {
-        last_error_msg_ = MConcat("param count is not match need:", param_count, " actual is :", in_params_.size());
-        last_error_ = MDbError::ParamCountNotMatch;
-        return std::make_pair(static_cast<unsigned>(0), last_error_);
+        MLOG(MGetLibLogger(), MERR, "param count is not match need:", param_count, " actual is:", in_params_.size());
+        return std::pair<unsigned, MError>(0, MError::ParamCountNotMatch);
     }
     if (mysql_stmt_bind_param(p_stmt_, &in_params_[0]) != 0)
     {
-        last_error_msg_ = MConcat("bind failed errorno:", mysql_stmt_errno(p_stmt_), " error:", mysql_stmt_error(p_stmt_));
-        last_error_ = MDbError::Unknown;
-        return std::make_pair(static_cast<unsigned>(0), last_error_);
+        MLOG(MGetLibLogger(), MERR, "bind failed errno:", mysql_stmt_errno(p_stmt_), " error:", mysql_stmt_error(p_stmt_));
+        return std::pair<unsigned, MError>(0, MError::Unknown);
     }
     if (mysql_stmt_execute(p_stmt_) != 0)
     {
-        last_error_msg_ = MConcat("execute failed errorno:", mysql_stmt_errno(p_stmt_), " error:", mysql_stmt_error(p_stmt_));
-        last_error_ = MDbError::Unknown;
-        return std::make_pair(static_cast<unsigned>(0), last_error_);
+        MLOG(MGetLibLogger(), MERR, "execute failed errorno:", mysql_stmt_errno(p_stmt_), " error:", mysql_stmt_error(p_stmt_));
+        return std::pair<unsigned, MError>(0, MError::Unknown);
     }
     unsigned affect = mysql_stmt_affected_rows(p_stmt_);
-    last_error_msg_ = "";
-    last_error_ = MDbError::No;
-    return std::make_pair(affect, last_error_);
+    return std::make_pair(affect, MError::No);
 }
 
-MDbError MMysqlCommand::DoExecuteReader()
+MError MMysqlCommand::DoExecuteReader()
 {
     int param_count = mysql_stmt_param_count(p_stmt_);
     if (static_cast<size_t>(param_count) != in_params_.size())
     {
-        last_error_msg_ = MConcat("param count is not match need:", param_count, " actual is :", in_params_.size());
-        last_error_ = MDbError::ParamCountNotMatch;
-        return last_error_;
+        MLOG(MGetLibLogger(), MERR, "param count is not match need:", param_count, " actual is :", in_params_.size());
+        return MError::ParamCountNotMatch;
     }
     if (mysql_stmt_bind_param(p_stmt_, &in_params_[0]) != 0)
     {
-        last_error_msg_ = MConcat("bind failed errorno:", mysql_stmt_errno(p_stmt_), " error:", mysql_stmt_error(p_stmt_));
-        last_error_ = MDbError::Unknown;
-        return last_error_;
+        MLOG(MGetLibLogger(), MERR, "bind failed errno:", mysql_stmt_errno(p_stmt_), " error:", mysql_stmt_error(p_stmt_));
+        return MError::Unknown;
     }
     my_bool update_max_length = 1;
     mysql_stmt_attr_set(p_stmt_, STMT_ATTR_UPDATE_MAX_LENGTH, static_cast<void*>(&update_max_length));
     if (mysql_stmt_execute(p_stmt_) != 0)
     {
-        last_error_msg_ = MConcat("execute failed errorno:", mysql_stmt_errno(p_stmt_), " error:", mysql_stmt_error(p_stmt_));
-        last_error_ = MDbError::Unknown;
-        return last_error_;
+        MLOG(MGetLibLogger(), MERR, "execute failed errno:", mysql_stmt_errno(p_stmt_), " error:", mysql_stmt_error(p_stmt_));
+        return MError::Unknown;
     }
     return BindResult();
 }
 
-MDbError MMysqlCommand::DoAddParam(const int8_t *p_param)
+MError MMysqlCommand::DoAddParam(const int8_t *p_param)
 {
     return AddParamNumeric(MYSQL_TYPE_TINY, 0, p_param);
 }
 
-MDbError MMysqlCommand::DoAddParam(const uint8_t *p_param)
+MError MMysqlCommand::DoAddParam(const uint8_t *p_param)
 {
     return AddParamNumeric(MYSQL_TYPE_TINY, 1, p_param);
 }
 
-MDbError MMysqlCommand::DoAddParam(const int16_t *p_param)
+MError MMysqlCommand::DoAddParam(const int16_t *p_param)
 {
     return AddParamNumeric(MYSQL_TYPE_SHORT, 0, p_param);
 }
 
-MDbError MMysqlCommand::DoAddParam(const uint16_t *p_param)
+MError MMysqlCommand::DoAddParam(const uint16_t *p_param)
 {
     return AddParamNumeric(MYSQL_TYPE_SHORT, 1, p_param);
 }
 
-MDbError MMysqlCommand::DoAddParam(const int32_t *p_param)
+MError MMysqlCommand::DoAddParam(const int32_t *p_param)
 {
     return AddParamNumeric(MYSQL_TYPE_LONG, 0, p_param);
 }
 
-MDbError MMysqlCommand::DoAddParam(const uint32_t *p_param)
+MError MMysqlCommand::DoAddParam(const uint32_t *p_param)
 {
     return AddParamNumeric(MYSQL_TYPE_LONG, 1, p_param);
 }
 
-MDbError MMysqlCommand::DoAddParam(const int64_t *p_param)
+MError MMysqlCommand::DoAddParam(const int64_t *p_param)
 {
     return AddParamNumeric(MYSQL_TYPE_LONGLONG, 0, p_param);
 }
 
-MDbError MMysqlCommand::DoAddParam(const uint64_t *p_param)
+MError MMysqlCommand::DoAddParam(const uint64_t *p_param)
 {
     return AddParamNumeric(MYSQL_TYPE_LONGLONG, 1, p_param);
 }
 
-MDbError MMysqlCommand::DoAddParam(const float *p_param)
+MError MMysqlCommand::DoAddParam(const float *p_param)
 {
     return AddParamNumeric(MYSQL_TYPE_FLOAT, 0, p_param);
 }
 
-MDbError MMysqlCommand::DoAddParam(const double *p_param)
+MError MMysqlCommand::DoAddParam(const double *p_param)
 {
     return AddParamNumeric(MYSQL_TYPE_DOUBLE, 0, p_param);
 }
 
-MDbError MMysqlCommand::DoAddParam(const std::string *p_param)
+MError MMysqlCommand::DoAddParam(const std::string *p_param)
 {
     MYSQL_BIND bind;
     memset(&bind, 0, sizeof(bind));
@@ -208,12 +190,10 @@ MDbError MMysqlCommand::DoAddParam(const std::string *p_param)
     bind.is_null = nullptr;
     bind.is_unsigned = 0;
     in_params_.push_back(bind);
-    last_error_msg_ = "";
-    last_error_ = MDbError::No;
-    return last_error_;
+    return MError::No;
 }
 
-MDbError MMysqlCommand::DoAddParam(const MBlob *p_param)
+MError MMysqlCommand::DoAddParam(const MBlob *p_param)
 {
     MYSQL_BIND bind;
     memset(&bind, 0, sizeof(bind));
@@ -224,77 +204,76 @@ MDbError MMysqlCommand::DoAddParam(const MBlob *p_param)
     bind.is_null = nullptr;
     bind.is_unsigned = 0;
     in_params_.push_back(bind);
-    last_error_msg_ = "";
-    last_error_ = MDbError::No;
-    return last_error_;
+    return MError::No;
 }
 
-MDbError MMysqlCommand::DoGetParam(int8_t *p_param)
+MError MMysqlCommand::DoGetParam(int8_t *p_param)
 {
     return GetParamNumeric(p_param);
 }
 
-MDbError MMysqlCommand::DoGetParam(uint8_t *p_param)
+MError MMysqlCommand::DoGetParam(uint8_t *p_param)
 {
     return GetParamNumeric(p_param);
 }
 
-MDbError MMysqlCommand::DoGetParam(int16_t *p_param)
+MError MMysqlCommand::DoGetParam(int16_t *p_param)
 {
     return GetParamNumeric(p_param);
 }
 
-MDbError MMysqlCommand::DoGetParam(uint16_t *p_param)
+MError MMysqlCommand::DoGetParam(uint16_t *p_param)
 {
     return GetParamNumeric(p_param);
 }
 
-MDbError MMysqlCommand::DoGetParam(int32_t *p_param)
+MError MMysqlCommand::DoGetParam(int32_t *p_param)
 {
     return GetParamNumeric(p_param);
 }
 
-MDbError MMysqlCommand::DoGetParam(uint32_t *p_param)
+MError MMysqlCommand::DoGetParam(uint32_t *p_param)
 {
     return GetParamNumeric(p_param);
 }
 
-MDbError MMysqlCommand::DoGetParam(int64_t *p_param)
+MError MMysqlCommand::DoGetParam(int64_t *p_param)
 {
     return GetParamNumeric(p_param);
 }
 
-MDbError MMysqlCommand::DoGetParam(uint64_t *p_param)
+MError MMysqlCommand::DoGetParam(uint64_t *p_param)
 {
     return GetParamNumeric(p_param);
 }
 
-MDbError MMysqlCommand::DoGetParam(float *p_param)
+MError MMysqlCommand::DoGetParam(float *p_param)
 {
     return GetParamNumeric(p_param);
 }
 
-MDbError MMysqlCommand::DoGetParam(double *p_param)
+MError MMysqlCommand::DoGetParam(double *p_param)
 {
     return GetParamNumeric(p_param);
 }
 
-MDbError MMysqlCommand::DoGetParam(std::string *p_param)
+MError MMysqlCommand::DoGetParam(std::string *p_param)
 {
     if (cur_col_ >= out_params_.size())
     {
-        last_error_msg_ = "record have no data";
-        last_error_ = MDbError::NoData;
-        return last_error_;
+        MLOG(MGetLibLogger(), MERR, "record have no more data");
+        return MError::NoData;
     }
     const MYSQL_BIND &bind = out_params_[cur_col_++];
+    if (!p_param)
+    {
+        return MError::No;
+    }
     if (*(bind.is_null)
             || bind.buffer_type == MYSQL_TYPE_NULL)
     {
-        last_error_msg_ = "";
-        last_error_ = MDbError::No;
         *p_param = "";
-        return last_error_;
+        return MError::No;
     }
     if (bind.buffer_type == MYSQL_TYPE_TINY_BLOB
         || bind.buffer_type == MYSQL_TYPE_MEDIUM_BLOB
@@ -305,16 +284,13 @@ MDbError MMysqlCommand::DoGetParam(std::string *p_param)
     {
         p_param->resize(*(bind.length));
         memcpy(&((*p_param)[0]), bind.buffer, p_param->size());
-        last_error_msg_ = "";
-        last_error_ = MDbError::No;
-        return last_error_;
+        return MError::No;
     }
-    last_error_msg_ = MConcat("can't convert type:", bind.buffer_type, " to string");
-    last_error_ = MDbError::ParamCannotConvert;
-    return last_error_;
+    MLOG(MGetLibLogger(), MERR, "can't convert type:", bind.buffer_type, " to string");
+    return MError::ConvertFailed;
 }
 
-MDbError MMysqlCommand::DoGetParam(MBlob *p_param)
+MError MMysqlCommand::DoGetParam(MBlob *p_param)
 {
     if (cur_col_ >= out_params_.size())
     {
