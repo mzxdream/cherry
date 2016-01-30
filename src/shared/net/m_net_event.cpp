@@ -1,8 +1,9 @@
 #include <net/m_net_event.h>
 #include <net/m_net_event_loop.h>
+#include <util/m_logger.h>
 
 MNetEvent::MNetEvent(int fd, MNetEventLoop *p_event_loop
-    , const std::function<void ()> &read_cb, const std::function<void ()> &write_cb, const std::function<void (MNetError)> &error_cb)
+    , const std::function<void ()> &read_cb, const std::function<void ()> &write_cb, const std::function<void (MError)> &error_cb)
     :fd_(fd)
     ,p_event_loop_(p_event_loop)
     ,read_cb_(read_cb)
@@ -57,58 +58,60 @@ std::function<void ()>& MNetEvent::GetWriteCallback()
     return write_cb_;
 }
 
-void MNetEvent::SetErrorCallback(const std::function<void (MNetError)> &error_cb)
+void MNetEvent::SetErrorCallback(const std::function<void (MError)> &error_cb)
 {
     error_cb_ = error_cb;
 }
 
-std::function<void (MNetError)>& MNetEvent::GetErrorCallback()
+std::function<void (MError)>& MNetEvent::GetErrorCallback()
 {
     return error_cb_;
 }
 
-MNetError MNetEvent::EnableEvents(int events)
+MError MNetEvent::EnableEvents(int events)
 {
     if (!p_event_loop_)
     {
-        return MNetError::EventLoopInvalid;
+        MLOG(MGetLibLogger(), MERR, "event loop is null");
+        return MError::Invalid;
     }
     if (events_actived_)
     {
-        MNetError err = p_event_loop_->ModEvent(fd_, events, this);
-        if (err != MNetError::No)
+        MError err = p_event_loop_->ModEvent(fd_, events, this);
+        if (err != MError::No)
         {
             return err;
         }
     }
     else
     {
-        MNetError err = p_event_loop_->AddEvent(fd_, events, this);
-        if (err != MNetError::No)
+        MError err = p_event_loop_->AddEvent(fd_, events, this);
+        if (err != MError::No)
         {
             return err;
         }
         events_actived_ = true;
     }
-    return MNetError::No;
+    return MError::No;
 }
 
-MNetError MNetEvent::DisableEvents()
+MError MNetEvent::DisableEvents()
 {
     if (events_actived_)
     {
         if (!p_event_loop_)
         {
-            return MNetError::EventLoopInvalid;
+            MLOG(MGetLibLogger(), MERR, "event loop is null");
+            return MError::Invalid;
         }
-        MNetError err = p_event_loop_->DelEvent(fd_);
-        if (err != MNetError::No)
+        MError err = p_event_loop_->DelEvent(fd_);
+        if (err != MError::No)
         {
             return err;
         }
         events_actived_ = false;
     }
-    return MNetError::No;
+    return MError::No;
 }
 
 void MNetEvent::OnReadCallback()
@@ -127,7 +130,7 @@ void MNetEvent::OnWriteCallback()
     }
 }
 
-void MNetEvent::OnErrorCallback(MNetError err)
+void MNetEvent::OnErrorCallback(MError err)
 {
     DisableEvents();
     if (error_cb_)

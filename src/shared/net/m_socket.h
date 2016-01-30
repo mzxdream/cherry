@@ -6,6 +6,7 @@
 #include <string>
 #include <utility>
 #include <net/m_net_common.h>
+#include <util/m_errno.h>
 
 enum class MSocketFamily
 {
@@ -34,27 +35,31 @@ public:
     MSocket(const MSocket &) = delete;
     MSocket& operator=(const MSocket &) = delete;
 public:
-    MNetError Attach(int sock);
+    MError Attach(int sock);
     int Detach();
-    MNetError Create(MSocketFamily family, MSocketType type, MSocketProtocol proto);
-    MNetError Close();
-    MNetError Bind(const std::string &ip, unsigned short port);
-    MNetError Listen(int backlog);
-    MNetError Accept(MSocket &sock);
-    MNetError Connect(const std::string &ip, unsigned short port);
-    std::pair<int, MNetError> Send(const char *p_buf, int len);
-    std::pair<int, MNetError> Recv(void *p_buf, int len);
-    MNetError SetBlock(bool block);
-    MNetError SetReUseAddr(bool re_use);
+    MError Create(MSocketFamily family, MSocketType type, MSocketProtocol proto);
+    MError Close();
+    MError Bind(const std::string &ip, unsigned port);
+    MError Listen(int backlog);
+    MError Accept(MSocket &sock);
+    MError Connect(const std::string &ip, unsigned port);
+    std::pair<int, MError> Send(const char *p_buf, int len);
+    std::pair<int, MError> Recv(void *p_buf, int len);
+    MError SetBlock(bool block);
+    MError SetReUseAddr(bool re_use);
     int GetHandler() const;
-    const std::string& GetIP() const;
-    unsigned short GetPort() const;
+    const std::string& GetBindIP() const;
+    unsigned GetBindPort() const;
+    const std::string& GetRemoteIP() const;
+    unsigned GetRemotePort() const;
 public:
-    MNetError CreateNonblockReuseListener(const std::string &ip, unsigned short port, int backlog);
+    MError CreateNonblockReuseAddrListener(const std::string &ip, unsigned short port, int backlog);
 private:
     int sock_;
-    std::string ip_;
-    unsigned short port_;
+    std::string bind_ip_;
+    unsigned short bind_port_;
+    std::string remote_ip_;
+    unsigned short remote_port_;
 };
 
 #endif

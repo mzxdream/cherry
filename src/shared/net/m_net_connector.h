@@ -12,7 +12,7 @@ class MNetConnector
 {
 public:
     explicit MNetConnector(MSocket *p_sock, MNetListener *p_listener, MNetEventLoop *p_event_loop
-        , const std::function<void ()> &read_cb, const std::function<void ()> &write_complete_cb, const std::function<void (MNetError)> &error_cb
+        , const std::function<void ()> &connect_cb_, const std::function<void ()> &read_cb, const std::function<void ()> &write_complete_cb, const std::function<void (MError)> &error_cb
         , bool need_free_sock, size_t read_len, size_t write_len);
     ~MNetConnector();
     MNetConnector(const MNetConnector &) = delete;
@@ -25,31 +25,35 @@ public:
     MNetListener* GetListener();
     void SetEventLoop(MNetEventLoop *p_event_loop);
     MNetEventLoop* GetEventLoop();
+    void SetConnectCallback(const std::function<void ()> &connect_cb);
+    std::function<void ()>& GetConnectCallback();
     void SetReadCallback(const std::function<void ()> &read_cb);
     std::function<void ()>& GetReadCallback();
     void SetWriteCompleteCallback(const std::function<void ()> &write_complete_cb);
     std::function<void ()>& GetWriteCompleteCallback();
-    void SetErrorCallback(const std::function<void (MNetError)> &error_cb);
-    std::function<void (MNetError)>& GetErrorCallback();
+    void SetErrorCallback(const std::function<void (MError)> &error_cb);
+    std::function<void (MError)>& GetErrorCallback();
     void SetNeedFreeSock(bool need);
     bool GetNeedFreeSock() const;
 
-    MNetError EnableReadWrite(bool enable);
+    MError EnableReadWrite(bool enable);
 
-    MNetError ReadBuf(void *p_buf, size_t len);
-    MNetError WriteBuf(const char *p_buf, size_t len);
+    MError Connect(const std::string &ip, unsigned port);
+    MError ReadBuf(void *p_buf, size_t len);
+    MError WriteBuf(const char *p_buf, size_t len);
 public:
     void OnReadCallback();
     void OnWriteCallback();
-    void OnErrorCallback(MNetError err);
+    void OnErrorCallback(MError err);
 private:
     MSocket *p_sock_;
     MNetEvent event_;
     MNetListener *p_listener_;
     MNetEventLoop *p_event_loop_;
+    std::function<void ()> connect_cb_;
     std::function<void ()> read_cb_;
     std::function<void ()> write_complete_cb_;
-    std::function<void (MNetError)> error_cb_;
+    std::function<void (MError)> error_cb_;
     bool need_free_sock_;
     MCircleBuffer read_buffer_;
     MCircleBuffer write_buffer_;

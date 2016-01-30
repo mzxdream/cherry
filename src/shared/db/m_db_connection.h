@@ -3,6 +3,7 @@
 
 #include <string>
 #include <db/m_db_common.h>
+#include <util/m_errno.h>
 
 enum class MDbConnThreadSafetyType
 {

@@ -3,6 +3,7 @@
 
 #include <net/m_net_common.h>
 #include <functional>
+#include <util/m_errno.h>
 
 class MNetEventLoop;
 
@@ -10,7 +11,7 @@ class MNetEvent
 {
 public:
     explicit MNetEvent(int fd, MNetEventLoop *p_event_loop
-        , const std::function<void ()> &read_cb, const std::function<void ()> &write_cb, const std::function<void (MNetError)> &error_cb);
+        , const std::function<void ()> &read_cb, const std::function<void ()> &write_cb, const std::function<void (MError)> &error_cb);
     ~MNetEvent();
     MNetEvent(const MNetEvent &) = delete;
     MNetEvent& operator=(const MNetEvent &) = delete;
@@ -23,21 +24,21 @@ public:
     std::function<void ()>& GetReadCallback();
     void SetWriteCallback(const std::function<void ()> &write_cb);
     std::function<void ()>& GetWriteCallback();
-    void SetErrorCallback(const std::function<void (MNetError)> &error_cb);
-    std::function<void (MNetError)>& GetErrorCallback();
+    void SetErrorCallback(const std::function<void (MError)> &error_cb);
+    std::function<void (MError)>& GetErrorCallback();
 
-    MNetError EnableEvents(int events);
-    MNetError DisableEvents();
+    MError EnableEvents(int events);
+    MError DisableEvents();
 public:
     void OnReadCallback();
     void OnWriteCallback();
-    void OnErrorCallback(MNetError err);
+    void OnErrorCallback(MError err);
 private:
     int fd_;
     MNetEventLoop *p_event_loop_;
     std::function<void ()> read_cb_;
     std::function<void ()> write_cb_;
-    std::function<void (MNetError)> error_cb_;
+    std::function<void (MError)> error_cb_;
     bool events_actived_;
 };
 

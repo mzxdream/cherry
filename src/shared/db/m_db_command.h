@@ -107,7 +107,7 @@ private:
         {
             return AddParams(args...);
         }
-        return ret;
+        return err;
     }
     MError GetParams()
     {

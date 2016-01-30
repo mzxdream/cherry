@@ -44,22 +44,19 @@ MDbConnThreadSafetyType MMysqlConnection::DoGetThreadSafetyType()
     return MDbConnThreadSafetyType::Connect;
 }
 
-MDbError MMysqlConnection::DoOpen(const std::string &conn_string)
+MError MMysqlConnection::DoOpen(const std::string &conn_string)
 {
-    last_error_ = MDbError::No;
-    last_error_msg_ = "";
     if (p_mysql_)
     {
-        last_error_msg_ = "mysql is opened";
-        last_error_ = MDbError::ConnectOpened;
-        return last_error_;
+        MLOG(MGetLibLogger(), MERR, "mysql is opened");
+        return MError::ConnectOpened;
     }
     if ((p_mysql_ = mysql_init(nullptr)) == nullptr)
     {
-        last_error_msg_ = "memory full";
-        last_error_ = MDbError::OutOfMemory;
-        return last_error_;
+        MLOG(MGetLibLogger(), MERR, "mysql_init failed");
+        return MError::Unknown;
     }
+    MError err = MError::No;
     do
     {
         unsigned int timeout = 0;
@@ -67,8 +64,8 @@ MDbError MMysqlConnection::DoOpen(const std::string &conn_string)
         {
             if (mysql_options(p_mysql_, MYSQL_OPT_CONNECT_TIMEOUT, &timeout) != 0)
             {
-                last_error_msg_ = MConcat("set timeout failed errorno:", mysql_errno(p_mysql_), " error:", mysql_error(p_mysql_));
-                last_error_ = MDbError::SetParamFailed;
+                MLOG(MGetLibLogger(), MERR, "set timeout failed errno:", mysql_errno(p_mysql_), " error:", mysql_error(p_mysql_));
+                err = MError::Unknown;
                 break;
             }
         }
@@ -76,8 +73,8 @@ MDbError MMysqlConnection::DoOpen(const std::string &conn_string)
         char reconnect = 1;
         if (mysql_options(p_mysql_, MYSQL_OPT_RECONNECT, &reconnect) != 0)
         {
-            last_error_msg_ = MConcat("set reconnect failed errorno:", mysql_errno(p_mysql_), " error:", mysql_error(p_mysql_));
-            last_error_ = MDbError::SetParamFailed;
+            MLOG(MGetLibLogger(), MERR, "set reconnect failed errno:", mysql_errno(p_mysql_), " error:", mysql_error(p_mysql_));
+            err = MError::Unknown;
             break;
         }
 
@@ -112,8 +109,8 @@ MDbError MMysqlConnection::DoOpen(const std::string &conn_string)
 
         if (mysql_real_connect(p_mysql_, p_ip, p_user, p_pwd, p_db, port, nullptr, client_flag) != p_mysql_)
         {
-            last_error_msg_ = MConcat("connect failed errorno:", mysql_errno(p_mysql_), " error:", mysql_error(p_mysql_));
-            last_error_ = MDbError::ConnectFailed;
+            MLOG(MGetLibLogger(), MERR, "connect failed errno:", mysql_errno(p_mysql_), " error:", mysql_error(p_mysql_));
+            err = MError::ConnectFailed;
             break;
         }
 
@@ -122,86 +119,85 @@ MDbError MMysqlConnection::DoOpen(const std::string &conn_string)
         {
             if (mysql_set_character_set(p_mysql_, charset.c_str()) != 0)
             {
-                last_error_msg_ = MConcat("set charset failed errorno:", mysql_errno(p_mysql_), " error:", mysql_error(p_mysql_));
-                last_error_ = MDbError::SetParamFailed;
+                MLOG(MGetLibLogger(), MERR, "set charset failed errno:", mysql_errno(p_mysql_), " error:", mysql_error(p_mysql_));
+                err = MError::Unknown;
                 break;
            }
         }
+        err = MError::No;
     } while (0);
-    if (last_error_ != MDbError::No)
+    if (err != MError::No)
     {
         mysql_close(p_mysql_);
         p_mysql_ = nullptr;
     }
-    return last_error_;
+    return err;
 }
 
-MDbError MMysqlConnection::DoCheckConnect()
+MError MMysqlConnection::DoCheckConnect()
 {
     if (mysql_query(p_mysql_, "select 1+1") != 0)
     {
-        last_error_msg_ = MConcat("select 1+1 failed errorno:", mysql_errno(p_mysql_), " error:", mysql_error(p_mysql_));
-        last_error_ = MDbError::QueryFailed;
-        return last_error_;
+        MLOG(MGetLibLogger(), MWARN, "select 1+1 failed errno:", mysql_errno(p_mysql_), " error:", mysql_error(p_mysql_));
+        return MError::Disconnect;
     }
+    MError err = MError::No;
+#if 1 //test code, need set zero
     MYSQL_RES *p_res = mysql_store_result(p_mysql_);
     if (!p_res)
     {
-        last_error_msg_ = MConcat("get res failed errorno:", mysql_errno(p_mysql_), " error:", mysql_error(p_mysql_));
-        last_error_ = MDbError::GetResFailed;
-        return last_error_;
+        MLOG(MGetLibLogger(), MERR, "get res failed errno:", mysql_errno(p_mysql_), " error:", mysql_error(p_mysql_));
+        return MError::Unknown;
     }
-    last_error_msg_ = "";
-    last_error_ = MDbError::No;
     do
     {
         MYSQL_ROW row = mysql_fetch_row(p_res);
         if (!row)
         {
-            last_error_msg_ = MConcat("get row failed errorno:", mysql_errno(p_mysql_), " error:", mysql_error(p_mysql_));
-            last_error_ = MDbError::GetRowFailed;
+            MLOG(MGetLibLogger(), MERR, "get row failed errno:", mysql_errno(p_mysql_), " error:", mysql_error(p_mysql_));
+            err = MError::Unknown;
             break;
         }
         if (mysql_num_fields(p_res) != 1)
         {
-            last_error_msg_ = "fields is not 1";
-            last_error_ = MDbError::Unknown;
+            MLOG(MGetLibLogger(), MERR, "fields is not 1");
+            err = MError::Unknown;
             break;
         }
         unsigned long *p_lengths = mysql_fetch_lengths(p_res);
         if (!p_lengths)
         {
-            last_error_msg_ = "lengths is null";
-            last_error_ = MDbError::Unknown;
+            MLOG(MGetLibLogger(), MERR, "lengths is null");
+            err = MError::Unknown;
             break;
         }
         int result = 0;
         if (!MConvertTo(std::string(row[0], p_lengths[0]), result)
-                || result != 2)
+            || result != 2)
         {
-            last_error_msg_ = "result is wrong";
-            last_error_ = MDbError::Unknown;
+            MLOG(MGetLibLogger(), MERR, "result is wrong");
+            err = MError::Unknown;
             break;
         }
+        err = MError::No;
     } while(0);
-    if (last_error_ != MDbError::No)
+    if (err != MError::No)
     {
        mysql_free_result(p_res);
        p_res = nullptr;
     }
-    return last_error_;
+#endif
+    return err;
 }
 
-MDbError MMysqlConnection::DoCheckAndReconnect()
+MError MMysqlConnection::DoCheckAndReconnect()
 {
-    last_error_msg_ = "";
-    last_error_ = MDbError::No;
     if (mysql_ping(p_mysql_) != 0)
     {
-        last_error_msg_ = MConcat("reconnect failed errno:", mysql_errno(p_mysql_), " error:", mysql_error(p_mysql_));
-        last_error_ = MDbError::ConnectFailed;
+        MLOG(MGetLibLogger(), MERR, "reconnect failed errno:", mysql_errno(p_mysql_), " error:", mysql_error(p_mysql_));
+        return MError::Disconnect;
     }
-    return last_error_;
+    return MError::No;
 }
 
 void MMysqlConnection::DoClose()
@@ -213,20 +209,18 @@ void MMysqlConnection::DoClose()
     }
 }
 
-MDbError MMysqlConnection::DoSelectDb(const std::string &db)
+MError MMysqlConnection::DoSelectDb(const std::string &db)
 {
-    last_error_ = MDbError::No;
-    last_error_msg_ = "";
     int ret = mysql_select_db(p_mysql_, db.c_str());
     if (ret != 0)
     {
-        last_error_msg_ = MConcat("select db failed error:", ret);
-        last_error_ = MDbError::Unknown;
+        MLOG(MGetLibLogger(), MERR, "select db failed error:", ret);
+        return MError::Unknown;
     }
-    return last_error_;
+    return MError::No;
 }
 
-MIDbCommand* MMysqlConnection::DoCreateCommand()
+MDbCommand* MMysqlConnection::DoCreateCommand()
 {
     return new MMysqlCommand(*this);
 }

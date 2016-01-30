@@ -90,7 +90,7 @@ std::pair<unsigned, MError> MMysqlCommand::DoExecuteNonQuery()
     if (static_cast<size_t>(param_count) != in_params_.size())
     {
         MLOG(MGetLibLogger(), MERR, "param count is not match need:", param_count, " actual is:", in_params_.size());
-        return std::pair<unsigned, MError>(0, MError::ParamCountNotMatch);
+        return std::pair<unsigned, MError>(0, MError::NotMatch);
     }
     if (mysql_stmt_bind_param(p_stmt_, &in_params_[0]) != 0)
     {
@@ -112,7 +112,7 @@ MError MMysqlCommand::DoExecuteReader()
     if (static_cast<size_t>(param_count) != in_params_.size())
     {
         MLOG(MGetLibLogger(), MERR, "param count is not match need:", param_count, " actual is :", in_params_.size());
-        return MError::ParamCountNotMatch;
+        return MError::NotMatch;
     }
     if (mysql_stmt_bind_param(p_stmt_, &in_params_[0]) != 0)
     {
@@ -294,18 +294,19 @@ MError MMysqlCommand::DoGetParam(MBlob *p_param)
 {
     if (cur_col_ >= out_params_.size())
     {
-        last_error_msg_ = "record have no data";
-        last_error_ = MDbError::NoData;
-        return last_error_;
+        MLOG(MGetLibLogger(), MERR, "have no more data :", cur_col_+1);
+        return MError::NoData;
     }
     const MYSQL_BIND &bind = out_params_[cur_col_++];
-    if (*(bind.is_null)
-            || bind.buffer_type == MYSQL_TYPE_NULL)
+    if (!p_param)
     {
-        last_error_msg_ = "";
-        last_error_ = MDbError::No;
+        return MError::No;
+    }
+    if (*(bind.is_null)
+        || bind.buffer_type == MYSQL_TYPE_NULL)
+    {
         p_param->Resize(0);
-        return last_error_;
+        return MError::No;
     }
     if (bind.buffer_type == MYSQL_TYPE_TINY_BLOB
         || bind.buffer_type == MYSQL_TYPE_MEDIUM_BLOB
@@ -316,46 +317,40 @@ MError MMysqlCommand::DoGetParam(MBlob *p_param)
     {
         p_param->Resize(*(bind.length));
         memcpy(p_param->GetData(), bind.buffer, p_param->GetSize());
-        last_error_msg_ = "";
-        last_error_ = MDbError::No;
-        return last_error_;
+        return MError::No;
     }
-    last_error_msg_ = MConcat("can't convert type:", bind.buffer_type, " to MBlob");
-    last_error_ = MDbError::ParamCannotConvert;
-    return last_error_;
+    MLOG(MGetLibLogger(), MERR, "can't convert type:", bind.buffer_type, " to MBlob");
+    return MError::ConvertFailed;
 }
 
-MDbError MMysqlCommand::BindResult()
+MError MMysqlCommand::BindResult()
 {
     if (mysql_stmt_store_result(p_stmt_) != 0)
     {
-        last_error_msg_ = MConcat("store result failed errorno:", mysql_stmt_errno(p_stmt_), " error:", mysql_stmt_error(p_stmt_));
-        last_error_ = MDbError::Unknown;
-        return last_error_;
+        MLOG(MGetLibLogger(), MERR, "store result failed errno:", mysql_stmt_errno(p_stmt_), " error:", mysql_stmt_error(p_stmt_));
+        return MError::Unknown;
     }
     MYSQL_RES *p_meta_res = mysql_stmt_result_metadata(p_stmt_);
     if (!p_meta_res)
     {
-        last_error_msg_ = MConcat("have not meta res errorno:", mysql_stmt_errno(p_stmt_), " error:", mysql_stmt_error(p_stmt_));
-        last_error_ = MDbError::Unknown;
-        return last_error_;
+        MLOG(MGetLibLogger(), MERR, "have not meta res errno:", mysql_stmt_errno(p_stmt_), " error:", mysql_stmt_error(p_stmt_));
+        return MError::Unknown;
     }
-    last_error_msg_ = "";
-    last_error_ = MDbError::No;
+    MError err = MError::No;
     do
     {
         MYSQL_FIELD *p_field_list = mysql_fetch_fields(p_meta_res);
         if (!p_field_list)
         {
-           last_error_msg_ = "mysql_fetch_fields is null unknown error";
-           last_error_ = MDbError::Unknown;
-           break;
+            MLOG(MGetLibLogger(), MERR, "mysql_fetch_fields is null unknown error");
+            err = MError::Unknown;
+            break;
         }
         unsigned long field_count = mysql_num_fields(p_meta_res);
         if (field_count == 0)
         {
-            last_error_msg_ = "mysql field_count is 0";
-            last_error_ = MDbError::Unknown;
+            MLOG(MGetLibLogger(), MERR, "mysql field_count is 0");
+            err = MError::Unknown;
             break;
         }
         out_params_.resize(field_count);
@@ -377,11 +372,12 @@ MDbError MMysqlCommand::BindResult()
         }
         if (mysql_stmt_bind_result(p_stmt_, &out_params_[0]) != 0)
         {
-            last_error_msg_ = MConcat("bind result failed errorno:", mysql_stmt_errno(p_stmt_), " error:", mysql_stmt_error(p_stmt_));
-            last_error_ = MDbError::Unknown;
+            MLOG(MGetLibLogger(), MERR, "bind result failed errno:", mysql_stmt_errno(p_stmt_), " error:", mysql_stmt_error(p_stmt_));
+            err = MError::Unknown;
             break;
         }
+        err = MError::No;
     } while (0);
     mysql_free_result(p_meta_res);
-    return last_error_;
+    return err;
 }

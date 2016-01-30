@@ -10,8 +10,8 @@ class MNetListener
 {
 public:
     explicit MNetListener(MSocket *p_sock, MNetEventLoop *p_event_loop
-        , const std::function<void (MSocket*)> &accept_cb, const std::function<void (MNetError)> &error_cb
-        , bool need_free_sock, size_t single_accept_count);
+        , const std::function<void (MSocket*)> &accept_cb, const std::function<void (MError)> &error_cb
+        , bool need_free_sock, size_t single_accept_count = 128);
     ~MNetListener();
     MNetListener(const MNetListener &) = delete;
     MNetListener& operator=(const MNetListener &) = delete;
@@ -23,23 +23,23 @@ public:
     MNetEventLoop* GetEventLoop();
     void SetAcceptCallback(const std::function<void (MSocket*)> &accept_cb);
     std::function<void (MSocket*)>& GetAcceptCallback();
-    void SetErrorCallback(const std::function<void (MNetError)> &error_cb);
-    std::function<void (MNetError)>& GetErrorCallback();
+    void SetErrorCallback(const std::function<void (MError)> &error_cb);
+    std::function<void (MError)>& GetErrorCallback();
     void SetNeedFreeSock(bool need);
     bool GetNeedFreeSock() const;
     void SetSingleAcceptCount(size_t count);
     size_t GetSingleAcceptCount() const;
 
-    MNetError EnableAccept(bool enable);
+    MError EnableAccept(bool enable);
 public:
     void OnAcceptCallback();
-    void OnErrorCallback(MNetError err);
+    void OnErrorCallback(MError err);
 private:
     MSocket *p_sock_;
     MNetEvent event_;
     MNetEventLoop *p_event_loop_;
     std::function<void (MSocket*)> accept_cb_;
-    std::function<void (MNetError)> error_cb_;
+    std::function<void (MError)> error_cb_;
     bool need_free_sock_;
     size_t single_accept_count_;
 };

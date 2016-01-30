@@ -3,15 +3,7 @@
 
 #include <pthread.h>
 #include <string>
-
-enum class MThreadError
-{
-    No = 0,
-    Unknown = 1,
-    IsRunning = 2,
-    CreateFailed = 3,
-    JoinFailed = 4,
-};
+#include <util/m_errno.h>
 
 class MThread
 {
@@ -21,12 +13,10 @@ protected:
     MThread(const MThread &) = delete;
     MThread& operator=(const MThread &) = delete;
 public:
-    MThreadError Start();
+    MError Start();
     void Stop();
-    MThreadError Join();
-    MThreadError StopAndJoin();
-    MThreadError GetLastError() const;
-    const std::string& GetLastErrorMsg() const;
+    MError Join();
+    MError StopAndJoin();
 private:
     virtual bool DoBeforeThreadStart() { return true; }
     virtual void DoAfterThreadStop() {}
@@ -37,8 +27,6 @@ private:
     pthread_t th_;
     bool need_run_;
     bool running_;
-    MThreadError last_error_;
-    std::string last_error_msg_;
 };
 
 #endif

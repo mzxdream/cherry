@@ -1,9 +1,10 @@
 #include <net/m_net_listener.h>
 #include <net/m_socket.h>
 #include <net/m_net_event_loop.h>
+#include <util/m_logger.h>
 
 MNetListener::MNetListener(MSocket *p_sock, MNetEventLoop *p_event_loop
-    , const std::function<void (MSocket*)> &accept_cb, const std::function<void (MNetError)> &error_cb
+    , const std::function<void (MSocket*)> &accept_cb, const std::function<void (MError)> &error_cb
     , bool need_free_sock, size_t single_accept_count)
     :p_sock_(p_sock)
     ,event_(p_sock ? p_sock->GetHandler() : -1, p_event_loop, nullptr, nullptr, nullptr)
@@ -60,12 +61,12 @@ std::function<void (MSocket*)>& MNetListener::GetAcceptCallback()
     return accept_cb_;
 }
 
-void MNetListener::SetErrorCallback(const std::function<void (MNetError)> &error_cb)
+void MNetListener::SetErrorCallback(const std::function<void (MError)> &error_cb)
 {
     error_cb_ = error_cb;
 }
 
-std::function<void (MNetError)>& MNetListener::GetErrorCallback()
+std::function<void (MError)>& MNetListener::GetErrorCallback()
 {
     return error_cb_;
 }
@@ -90,7 +91,7 @@ size_t MNetListener::GetSingleAcceptCount() const
     return single_accept_count_;
 }
 
-MNetError MNetListener::EnableAccept(bool enable)
+MError MNetListener::EnableAccept(bool enable)
 {
     if (enable)
     {
@@ -116,15 +117,15 @@ void MNetListener::OnAcceptCallback()
         MSocket *p_conn_sock = new MSocket();
         if (!p_conn_sock)
         {
-            OnErrorCallback(MNetError::OutOfMemory);
+            OnErrorCallback(MError::OutOfMemory);
             return;
         }
-        MNetError err = p_sock_->Accept(*p_conn_sock);
-        if (err != MNetError::No)
+        MError err = p_sock_->Accept(*p_conn_sock);
+        if (err != MError::No)
         {
             delete p_conn_sock;
-            if (err != MNetError::Again
-                && err != MNetError::InterruptedSysCall)
+            if (err != MError::Again
+                && err != MError::InterruptedSysCall)
             {
                 OnErrorCallback(err);
             }
@@ -134,9 +135,8 @@ void MNetListener::OnAcceptCallback()
     }
 }
 
-void MNetListener::OnErrorCallback(MNetError err)
+void MNetListener::OnErrorCallback(MError err)
 {
-    event_.DisableEvents();
     if (error_cb_)
     {
         error_cb_(err);
