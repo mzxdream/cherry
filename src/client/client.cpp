@@ -1,126 +1,59 @@
-#include <net/m_socket.h>
-#include <net/m_net_event_loop.h>
+#include <net/m_net_event_loop_thread.h>
 #include <net/m_net_connector.h>
-#include <thread/m_thread.h>
-#include <mutex>
-#include <functional>
-#include <iostream>
-#include <cstring>
-#include <list>
+#include <net/m_net_listener.h>
+#include <util/m_logger.h>
 
-class NetThread
-    :public MThread
-{
-public:
-    NetThread() {}
-    virtual ~NetThread(){}
-    NetThread(const NetThread &) = delete;
-    NetThread& operator=(const NetThread &) = delete;
-public:
-    bool Init()
-    {
-        if (event_loop_.Create() == MNetError::No)
-        {
-            return Start() == MThreadError::No;
-        }
-        return false;
-    }
-    void Close() { StopAndJoin(); event_loop_.Close(); }
-    MNetEventLoop& GetEventLoop() { return event_loop_; }
-    void AddCallback(const std::function<void ()> &callback)
-    {
-        std::lock_guard<std::mutex> lock(callback_mutex_);
-        callback_list_.push_back(callback);
-        event_loop_.Interrupt();
-    }
-private:
-    virtual void DoRun()
-    {
-        event_loop_.ProcessEvents();
-        std::list<std::function<void ()> > cb_list;
-        {
-            std::lock_guard<std::mutex> lock(callback_mutex_);
-            cb_list.swap(callback_list_);
-        }
-        for (auto &cb : cb_list)
-        {
-            if (cb)
-            {
-                cb();
-            }
-        }
-    }
-private:
-    MNetEventLoop event_loop_;
-    std::list<std::function<void ()> > callback_list_;
-    std::mutex callback_mutex_;
-};
+uint16_t len = 0;
+bool len_readed = false;
 
-void OnRead(MNetConnector *p_connector)
+void OnConnectCallback(MNetConnector *p_connector)
 {
-    char tmp[11];
-    if (p_connector->ReadBuf(tmp, 10) == MNetError::No)
-    {
-        tmp[10] = 0;
-        std::cout << "recv:" << tmp << std::endl;
-    }
+    MLOG(MGetLibLogger(), MERR, "connect success");
 }
 
-void OnWrite(MNetConnector *p_connector)
+void OnErrorCallback(MError err)
 {
-    std::cout << p_connector << " write complete" << std::endl;
+    MLOG(MGetLibLogger(), MERR, "err:", static_cast<int>(err));
 }
 
-void WriteCallback(MNetConnector *p_connector, char *p, size_t len)
+void OnReadCallback(MNetConnector *p_connector)
 {
-    p_connector->WriteBuf(p, len);
-    delete p;
+
 }
 
-int main()
+void OnWriteCompleteCallback(MNetConnector *p_connector)
 {
-    NetThread th;
-    if (!th.Init())
-    {
-        return 0;
-    }
-    MSocket *p_sock = new MSocket();
-    if (p_sock->Create(MSocketFamily::IPV4, MSocketType::TCP, MSocketProtocol::Default) != MNetError::No)
-    {
-        return 0;
-    }
-//    if (p_sock->Bind("127.0.0.1", 3231) != MNetError::No)
-//    {
-//        return 0;
-//    }
-//    if (p_sock->SetReUseAddr(true) != MNetError::No)
-//    {
-//        return 0;
-//    }
-    if (p_sock->Connect("127.0.0.1", 3232) != MNetError::No)
-    {
-        return 0;
-    }
-    if (p_sock->SetBlock(false) != MNetError::No)
-    {
-        return 0;
-    }
-    MNetConnector *p_connector = new MNetConnector(p_sock, nullptr, &(th.GetEventLoop()), nullptr, nullptr, nullptr, true, 1024, 1024);
-    p_connector->SetReadCallback(std::bind(OnRead, p_connector));
-    p_connector->SetWriteCompleteCallback(std::bind(OnWrite, p_connector));
-    if (p_connector->EnableReadWrite(true) != MNetError::No)
-    {
-        return 0;
-    }
 
-    char tmp[100];
-    while (std::cin.getline(tmp, 1024))
+}
+
+int main (int argc, char *argv[])
+{
+    MNetEventLoopThread ev_thread;
+    MError err = ev_thread.Init();
+    if (err != MError::No)
     {
-        size_t len = strlen(tmp);
-        char *p = new char[len];
-        memcpy(p, tmp, len);
-        th.AddCallback(std::bind(WriteCallback, p_connector, p, len));
+        MLOG(MGetLibLogger(), MERR, "event loop thread init failed");
+        return 0;
     }
+    err = ev_thread.Start();
+    if (err != MError::No)
+    {
+        MLOG(MGetLibLogger(), MERR, "event loop thread start failed");
+        return 0;
+    }
+    MSocket sock;
+    err = sock.Create(MSocketFamily::IPV4, MSocketType::TCP, MSocketProtocol::Default);
+    if (err != MError::No)
+    {
+        MLOG(MGetLibLogger(), MERR, "create socket failed");
+        return 0;
+    }
+    MNetConnector conn(&sock, nullptr, &ev_thread.GetEventLoop(), nullptr, nullptr, nullptr, nullptr, false, 10, 10);
+    conn.SetConnectCallback(std::bind(OnConnectCallback, &conn));
+    conn.SetReadCallback(std::bind(OnReadCallback, &conn));
+    conn.SetWriteCompleteCallback(std::bind(OnWriteCompleteCallback, &conn));
+    conn.SetErrorCallback(std::bind(OnErrorCallback));
 
     return 0;
 }
+
