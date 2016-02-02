@@ -1,60 +1,7 @@
 #include <net/net_manager.h>
 #include <iostream>
 #include <cstring>
-
-NetThread::NetThread()
-{
-}
-
-NetThread::~NetThread()
-{
-}
-
-bool NetThread::Init()
-{
-    if (event_loop_.Create() == MNetError::No)
-    {
-        return Start() == MThreadError::No;
-    }
-    return true;
-}
-
-void NetThread::Close()
-{
-    StopAndJoin();
-    event_loop_.Close();
-}
-
-MNetEventLoop& NetThread::GetEventLoop()
-{
-    return event_loop_;
-}
-
-void NetThread::AddCallback(const std::function<void ()> &callback)
-{
-    {
-        std::lock_guard<std::mutex> lock(callback_mutex_);
-        callback_list_.push_back(callback);
-    }
-    event_loop_.Interrupt();
-}
-
-void NetThread::DoRun()
-{
-    event_loop_.ProcessEvents();
-    std::list<std::function<void ()> > cb_list;
-    {
-        std::lock_guard<std::mutex> lock(callback_mutex_);
-        cb_list.swap(callback_list_);
-    }
-    for (auto &cb : cb_list)
-    {
-        if (cb)
-        {
-            cb();
-        }
-    }
-}
+#include <util/m_logger.h>
 
 NetManager::NetManager()
 {
@@ -70,8 +17,10 @@ bool NetManager::Init(size_t work_count)
     work_list_.resize(work_count);
     for (auto &work : work_list_)
     {
-        work = new NetThread();
-        if (!work || !work->Init())
+        work = new MNetEventLoopThread();
+        if (!work
+            || work->Init() != MError::No
+            || work->Start() != MError::No)
         {
             return false;
         }
@@ -81,15 +30,15 @@ bool NetManager::Init(size_t work_count)
 
 void NetManager::Close()
 {
-    for (auto &work : work_list_)
+    for (const auto &work : work_list_)
     {
         delete work;
     }
-    for (auto &listener : listener_list_)
+    for (const auto &listener : listener_list_)
     {
         delete listener;
     }
-    for (auto &session : session_list_)
+    for (const auto &session : session_list_)
     {
         if (session && session->p_connector)
         {
@@ -106,12 +55,12 @@ bool NetManager::AddListener(const std::string &ip, unsigned short port)
     {
         return false;
     }
-    if (p_sock->CreateNonblockReuseListener(ip, port, 128) != MNetError::No)
+    if (p_sock->CreateNonblockReuseAddrListener(ip, port, 128) != MError::No)
     {
         delete p_sock;
         return false;
     }
-    NetThread *p_net_thread = GetMinEventsThread();
+    MNetEventLoopThread *p_net_thread = GetMinEventsThread();
     MNetListener *p_listener = new MNetListener(p_sock, &(p_net_thread->GetEventLoop()), nullptr, nullptr, true, 5);
     if (!p_listener)
     {
@@ -122,8 +71,8 @@ bool NetManager::AddListener(const std::string &ip, unsigned short port)
     p_listener->SetAcceptCallback(std::bind(&NetManager::OnConnectCallback, this, p_listener, std::placeholders::_1));
     p_listener->SetErrorCallback(std::bind(&NetManager::OnListenerErrorCallback, this, listener_list_.size()-1, std::placeholders::_1));
 
-    MNetError err = p_listener->EnableAccept(true);
-    if (err != MNetError::No)
+    MError err = p_listener->EnableAccept(true);
+    if (err != MError::No)
     {
         return false;
     }
@@ -168,6 +117,8 @@ void NetManager::CloseSession(NetSession *p_session)
 
 void OnWriteSessionCallback(NetSession *p_session, char *p_buf, size_t len)
 {
+    uint16_t size = htons(static_cast<uint16_t>(len));
+    p_session->p_connector->WriteBuf(static_cast<char*>(static_cast<void*>(&size)), sizeof(size));
     p_session->p_connector->WriteBuf(p_buf, len);
     delete p_buf;
 }
@@ -179,6 +130,7 @@ void NetManager::WriteSession(NetSession *p_session, char *p_buf, size_t len)
         return;
     }
     p_session->p_loop_thread->AddCallback(std::bind(OnWriteSessionCallback, p_session, p_buf, len));
+    p_session->p_loop_thread->Interrupt();
 }
 
 void NetManager::WriteAll(const char *p_buf, size_t len)
@@ -194,19 +146,40 @@ void NetManager::WriteAll(const char *p_buf, size_t len)
 
 void NetManager::OnReadCallback(NetSession *p_session)
 {
-    char tmp[10];
-    if (p_session->p_connector->ReadBuf(tmp, 10) == MNetError::No)
+    while (true)
     {
-        std::cout << p_session->p_connector->GetSocket()->GetIP() << " "
-            << p_session->p_connector->GetSocket()->GetPort() << " "
-            << tmp << std::endl;
+        if (!p_session->len_readed)
+        {
+            if (p_session->p_connector->ReadBuf(&p_session->len, sizeof(p_session->len)) == MError::No)
+            {
+                p_session->len = ntohs(p_session->len);
+                p_session->len_readed = true;
+            }
+            else
+            {
+                return;
+            }
+        }
+        std::string str;
+        str.resize(p_session->len);
+        if (p_session->p_connector->ReadBuf(&str[0], str.size()) == MError::No)
+        {
+            p_session->len_readed = false;
+            std::cout << p_session->p_connector->GetSocket()->GetRemoteIP() << " "
+            << p_session->p_connector->GetSocket()->GetRemotePort() << " "
+                << str << std::endl;
+        }
+        else
+        {
+            return;
+        }
     }
 }
 
-void NetManager::OnCloseCallback(NetSession *p_session, MNetError err)
+void NetManager::OnCloseCallback(NetSession *p_session, MError err)
 {
-    std::cout << p_session->p_connector->GetSocket()->GetIP() << " "
-        << p_session->p_connector->GetSocket()->GetPort() << " "
+    std::cout << p_session->p_connector->GetSocket()->GetRemoteIP() << " "
+        << p_session->p_connector->GetSocket()->GetRemotePort() << " "
         << " has socket disconnect:" << static_cast<int>(err) << std::endl;
     std::lock_guard<std::mutex> lock(session_mutex_);
     auto it = session_list_.find(p_session);
@@ -224,13 +197,13 @@ void NetManager::OnConnectCallback(MNetListener *p_listener, MSocket *p_sock)
     {
         return;
     }
-    NetThread *p_loop_thread = GetMinEventsThread();
+    MNetEventLoopThread *p_loop_thread = GetMinEventsThread();
     if (!p_loop_thread)
     {
         delete p_sock;
         return;
     }
-    MNetConnector *p_connector = new MNetConnector(p_sock, p_listener, &(p_loop_thread->GetEventLoop()), nullptr, nullptr, nullptr, true, 1024, 1024);
+    MNetConnector *p_connector = new MNetConnector(p_sock, p_listener, &(p_loop_thread->GetEventLoop()), nullptr, nullptr, nullptr, nullptr, true, 1024, 1024);
     if (!p_connector)
     {
         delete p_sock;
@@ -239,19 +212,21 @@ void NetManager::OnConnectCallback(MNetListener *p_listener, MSocket *p_sock)
     NetSession *p_session = new NetSession();
     p_session->p_connector = p_connector;
     p_session->p_loop_thread = p_loop_thread;
+    p_session->len_readed = false;
+    p_session->len = 0;
 
     std::lock_guard<std::mutex> lock(session_mutex_);
     session_list_.insert(p_session);
     p_connector->SetReadCallback(std::bind(&NetManager::OnReadCallback, this, p_session));
     p_connector->SetErrorCallback(std::bind(&NetManager::OnCloseCallback, this, p_session, std::placeholders::_1));
     p_connector->EnableReadWrite(true);
-    std::cout << p_session->p_connector->GetSocket()->GetIP() << " "
-        << p_session->p_connector->GetSocket()->GetPort() << " "
+    std::cout << p_session->p_connector->GetSocket()->GetRemoteIP() << " "
+        << p_session->p_connector->GetSocket()->GetRemotePort() << " "
         << " has socket connect" << std::endl;
 
 }
 
-void NetManager::OnListenerErrorCallback(size_t pos, MNetError err)
+void NetManager::OnListenerErrorCallback(size_t pos, MError err)
 {
     if (listener_list_.size() >= pos)
     {
@@ -262,23 +237,23 @@ void NetManager::OnListenerErrorCallback(size_t pos, MNetError err)
     {
         return;
     }
-    std::cout << "listener ip:" << p_listener->GetSocket()->GetIP()
-        << " port:" << p_listener->GetSocket()->GetPort() << std::endl;
+    std::cout << "listener ip:" << p_listener->GetSocket()->GetBindIP()
+        << " port:" << p_listener->GetSocket()->GetBindPort() << std::endl;
 }
 
-NetThread* NetManager::GetMinEventsThread()
+MNetEventLoopThread* NetManager::GetMinEventsThread()
 {
     if (work_list_.empty())
     {
         return nullptr;
     }
-    NetThread *p_loop_thread = work_list_[0];
-    size_t count = work_list_[0]->GetEventLoop().GetEventCount();
+    MNetEventLoopThread *p_loop_thread = work_list_[0];
+    size_t count = work_list_[0]->GetEventCount();
     for (size_t i = 1; i < work_list_.size(); ++i)
     {
-        if (count > work_list_[i]->GetEventLoop().GetEventCount())
+        if (count > work_list_[i]->GetEventCount())
         {
-            count = work_list_[i]->GetEventLoop().GetEventCount();
+            count = work_list_[i]->GetEventCount();
             p_loop_thread = work_list_[i];
         }
     }

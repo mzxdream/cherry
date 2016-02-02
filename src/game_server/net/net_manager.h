@@ -2,7 +2,7 @@
 #define _NET_MANAGER_H_
 
 #include <net/m_socket.h>
-#include <net/m_net_event_loop.h>
+#include <net/m_net_event_loop_thread.h>
 #include <net/m_net_connector.h>
 #include <net/m_net_listener.h>
 #include <thread/m_thread.h>
@@ -12,31 +12,12 @@
 #include <util/m_singleton.h>
 #include <set>
 
-class NetThread
-    :public MThread
-{
-public:
-    NetThread();
-    virtual ~NetThread();
-    NetThread(const NetThread &) = delete;
-    NetThread& operator=(const NetThread &) = delete;
-public:
-    bool Init();
-    void Close();
-    MNetEventLoop& GetEventLoop();
-    void AddCallback(const std::function<void ()> &callback);
-private:
-    virtual void DoRun();
-private:
-    MNetEventLoop event_loop_;
-    std::list<std::function<void ()> > callback_list_;
-    std::mutex callback_mutex_;
-};
-
 struct NetSession
 {
     MNetConnector *p_connector;
-    NetThread *p_loop_thread;
+    MNetEventLoopThread *p_loop_thread;
+    bool len_readed;
+    uint16_t len;
 };
 
 class NetManager
@@ -56,13 +37,13 @@ public:
     void WriteAll(const char *p_buf, size_t len);
 public:
     void OnConnectCallback(MNetListener *p_listener, MSocket *p_sock);
-    void OnListenerErrorCallback(size_t pos, MNetError err);
+    void OnListenerErrorCallback(size_t pos, MError err);
     void OnReadCallback(NetSession *p_session);
-    void OnCloseCallback(NetSession *p_session, MNetError err);
+    void OnCloseCallback(NetSession *p_session, MError err);
 private:
-    NetThread* GetMinEventsThread();
+    MNetEventLoopThread* GetMinEventsThread();
 private:
-    std::vector<NetThread*> work_list_;
+    std::vector<MNetEventLoopThread*> work_list_;
     std::vector<MNetListener*> listener_list_;
     std::mutex session_mutex_;
     std::set<NetSession*> session_list_;

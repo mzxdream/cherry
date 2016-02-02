@@ -136,6 +136,10 @@ MError MNetEventLoop::ProcessEvents()
     int max_events = epoll_wait(epoll_fd_, &event_list_[0], event_list_.size(), -1);
     if (max_events == -1)
     {
+        if (errno == EINTR)
+        {
+            return MError::No;
+        }
         MLOG(MGetLibLogger(), MERR, "epoll wait failed errno:", errno);
         return MError::Unknown;
     }

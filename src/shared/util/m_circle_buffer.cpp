@@ -97,7 +97,7 @@ std::pair<char*, size_t> MCircleBuffer::GetNextCapacity()
     if (p_end_ >= p_start_)
     {
         size_t len = len_ - static_cast<size_t>(p_end_-p_buf_);
-        if (len == len_)
+        if (p_start_ == p_buf_)
         {
             --len;
         }

@@ -21,6 +21,27 @@ MError MNetEventLoopThread::Close()
     return event_loop_.Close();
 }
 
+MError MNetEventLoopThread::Start()
+{
+    return MThread::Start();
+}
+
+MError MNetEventLoopThread::Stop()
+{
+    MThread::Stop();
+    return event_loop_.Interrupt();
+}
+
+MError MNetEventLoopThread::StopAndJoin()
+{
+    MError err = Stop();
+    if (err != MError::No)
+    {
+        return err;
+    }
+    return MThread::Join();
+}
+
 MNetEventLoop& MNetEventLoopThread::GetEventLoop()
 {
     return event_loop_;

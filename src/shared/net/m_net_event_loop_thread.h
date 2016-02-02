@@ -12,12 +12,15 @@ class MNetEventLoopThread
 {
 public:
     MNetEventLoopThread(size_t single_process_events = 128);
-    ~MNetEventLoopThread();
+    virtual ~MNetEventLoopThread();
     MNetEventLoopThread(const MNetEventLoopThread &) = delete;
     MNetEventLoopThread& operator=(const MNetEventLoopThread &) = delete;
 public:
     MError Init();
     MError Close();
+    MError Start();
+    MError Stop();
+    MError StopAndJoin();
     MNetEventLoop& GetEventLoop();
     size_t GetEventCount() const;
     void AddCallback(const std::function<void ()> &cb);
