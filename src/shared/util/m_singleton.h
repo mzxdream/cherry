@@ -1,6 +1,7 @@
 #ifndef _M_SINGLETON_H_
 #define _M_SINGLETON_H_
 
+#include <mutex>
 #include <thread/m_null_mutex.h>
 
 template<typename TClass, typename TMutex = MNullMutex>
