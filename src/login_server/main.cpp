@@ -15,7 +15,7 @@ void OnSignal(int s)
     default:
         break;
     }
-    std::cout << s << std::endl;
+    std::cout << "recv signal:" << s << std::endl;
 }
 
 void HookSignals()
