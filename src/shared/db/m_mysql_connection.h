@@ -2,10 +2,10 @@
 #define _M_MYSQL_CONNECTION_H_
 
 #include <db/m_db_connection.h>
-#include <mysql.h>
 #include <string>
 #include <util/m_errno.h>
 #include <util/m_logger.h>
+#include <mysql.h>
 
 class MMysqlConnection
     :public MDbConnection

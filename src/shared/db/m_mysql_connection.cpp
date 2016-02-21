@@ -2,6 +2,7 @@
 #include <db/m_mysql_command.h>
 #include <util/m_convert.h>
 #include <util/m_string.h>
+#include <mysql.h>
 
 static const std::string sc_mysql_sep = ";";
 static const std::string sc_mysql_op = "=";

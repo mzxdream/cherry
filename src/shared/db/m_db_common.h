@@ -14,7 +14,7 @@ public:
         std::string val_str;
         if (!GetParamValue(str, param, val_str, op, sep, trim))
         {
-            MLOG(MGetLibLogger(), MERR, "GetParamValue failed");
+            //MLOG(MGetLibLogger(), MERR, "GetParamValue failed");
             return false;
         }
         if (!MConvertTo(val_str, val))
@@ -29,7 +29,7 @@ public:
         size_t pos_start = str.find(param);
         if (pos_start == std::string::npos)
         {
-            MLOG(MGetLibLogger(), MERR, "can't find \"", param, "\" from \"", str, "\"");
+            //MLOG(MGetLibLogger(), MERR, "can't find \"", param, "\" from \"", str, "\"");
             return false;
         }
         pos_start += param.size();

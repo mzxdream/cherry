@@ -17,6 +17,7 @@ AUX_SOURCE_DIRECTORY(. SRC_MAIN)
 INCLUDE_DIRECTORIES(
     ./
     ../shared/
+    ../shared/3rd/mysql/
 )
 
 LINK_DIRECTORIES(
