@@ -16,19 +16,27 @@ struct NetPackage
 class NetSession
 {
 public:
-    NetSession();
+    NetSession(MSocket *p_sock, MNetEventLoopThread *p_event_loop_thread);
     ~NetSession();
     NetSession(const NetSession &) = delete;
     NetSession& operator=(const NetSession &) = delete;
-public:
-    void Update();
 private:
-    MNetConnector *p_connector_;
-    MNetEventLoopThread *p_loop_thread_;
-    uint16_t pkg_len_;
-    bool pkg_len_read_;
-    std::mutex pkg_mtx_;
-    std::list<NetPackage> pkg_list;
+    bool SendNetPkg(const NetPackage &pkg);
+    void Update();
+public:
+    void OnReadCallback();
+    void OnWriteCallback();
+    void OnWriteCompleteCallback();
+    void OnErrorCallback(MError err);
+private:
+    MNetConnector connector_;
+    MNetEventLoopThread *p_event_loop_thread_;
+    uint16_t recv_pkg_len_;
+    bool recv_pkg_len_read_;
+    std::mutex recv_pkg_mtx_;
+    std::list<NetPackage> recv_pkg_list_;
+    std::mutex send_pkg_mtx_;
+    std::list<NetPackage> send_pkg_list_;
 };
 
 #endif
