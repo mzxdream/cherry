@@ -5,13 +5,12 @@
 #include <util/m_circle_buffer.h>
 
 class MSocket;
-class MNetListener;
 class MNetEventLoop;
 
 class MNetConnector
 {
 public:
-    explicit MNetConnector(MSocket *p_sock, MNetListener *p_listener, MNetEventLoop *p_event_loop
+    explicit MNetConnector(MSocket *p_sock, MNetEventLoop *p_event_loop
         , const std::function<void ()> &connect_cb_, const std::function<void ()> &read_cb, const std::function<void ()> &write_complete_cb, const std::function<void (MError)> &error_cb
         , bool need_free_sock, size_t read_len, size_t write_len);
     ~MNetConnector();
@@ -21,8 +20,6 @@ public:
     void SetSocket(MSocket *p_sock);
     MSocket* GetSocket();
     MNetEvent& GetEvent();
-    void SetListener(MNetListener *p_listener);
-    MNetListener* GetListener();
     void SetEventLoop(MNetEventLoop *p_event_loop);
     MNetEventLoop* GetEventLoop();
     void SetConnectCallback(const std::function<void ()> &connect_cb);
@@ -48,8 +45,6 @@ public:
 private:
     MSocket *p_sock_;
     MNetEvent event_;
-    MNetListener *p_listener_;
-    MNetEventLoop *p_event_loop_;
     std::function<void ()> connect_cb_;
     std::function<void ()> read_cb_;
     std::function<void ()> write_complete_cb_;

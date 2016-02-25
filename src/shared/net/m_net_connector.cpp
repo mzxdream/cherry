@@ -1,16 +1,13 @@
 #include <net/m_net_connector.h>
 #include <net/m_socket.h>
-#include <net/m_net_listener.h>
 #include <net/m_net_event_loop.h>
 #include <util/m_logger.h>
 
-MNetConnector::MNetConnector(MSocket *p_sock, MNetListener *p_listener, MNetEventLoop *p_event_loop
+MNetConnector::MNetConnector(MSocket *p_sock, MNetEventLoop *p_event_loop
         , const std::function<void ()> &connect_cb, const std::function<void ()> &read_cb, const std::function<void ()> &write_complete_cb, const std::function<void (MError)> &error_cb
         , bool need_free_sock, size_t read_len, size_t write_len)
     :p_sock_(p_sock)
     ,event_(p_sock ? p_sock->GetHandler() : -1, p_event_loop, nullptr, nullptr, nullptr)
-    ,p_listener_(p_listener)
-    ,p_event_loop_(p_event_loop)
     ,connect_cb_(connect_cb)
     ,read_cb_(read_cb)
     ,write_complete_cb_(write_complete_cb)
@@ -46,25 +43,14 @@ MNetEvent& MNetConnector::GetEvent()
     return event_;
 }
 
-void MNetConnector::SetListener(MNetListener *p_listener)
-{
-    p_listener_ = p_listener;
-}
-
-MNetListener* MNetConnector::GetListener()
-{
-    return p_listener_;
-}
-
 void MNetConnector::SetEventLoop(MNetEventLoop *p_event_loop)
 {
-    p_event_loop_ = p_event_loop;
-    event_.SetEventLoop(p_event_loop_);
+    event_.SetEventLoop(p_event_loop);
 }
 
 MNetEventLoop* MNetConnector::GetEventLoop()
 {
-    return p_event_loop_;
+    return event_.GetEventLoop();
 }
 
 void MNetConnector::SetConnectCallback(const std::function<void ()> &connect_cb)
@@ -119,7 +105,7 @@ MError MNetConnector::EnableReadWrite(bool enable)
         event_.SetReadCallback(std::bind(&MNetConnector::OnReadCallback, this));
         event_.SetWriteCallback(std::bind(&MNetConnector::OnWriteCallback, this));
         event_.SetErrorCallback(std::bind(&MNetConnector::OnErrorCallback, this, std::placeholders::_1));
-        return event_.EnableEvents(M_NET_EVENT_READ|M_NET_EVENT_EDGE);
+        return event_.EnableEvents(M_NET_EVENT_READ|M_NET_EVENT_LEVEL);
     }
     else
     {
@@ -168,7 +154,7 @@ MError MNetConnector::WriteBuf(const char *p_buf, size_t len)
                     return MError::Overflow;
                 }
                 write_ready_ = false;
-                return event_.EnableEvents(M_NET_EVENT_READ|M_NET_EVENT_WRITE|M_NET_EVENT_EDGE);
+                return event_.EnableEvents(M_NET_EVENT_READ|M_NET_EVENT_WRITE|M_NET_EVENT_LEVEL);
             }
             if (write_complete_cb_)
             {
@@ -180,7 +166,7 @@ MError MNetConnector::WriteBuf(const char *p_buf, size_t len)
             || ret.second == MError::Again)
         {
             write_ready_ = false;
-            return event_.EnableEvents(M_NET_EVENT_READ|M_NET_EVENT_WRITE|M_NET_EVENT_EDGE);
+            return event_.EnableEvents(M_NET_EVENT_READ|M_NET_EVENT_WRITE|M_NET_EVENT_LEVEL);
         }
         else
         {
@@ -261,7 +247,7 @@ void MNetConnector::OnWriteCallback()
         buf = read_buffer_.GetNextData();
         if (!buf.first || buf.second == 0)
         {
-            MError err = event_.EnableEvents(M_NET_EVENT_READ|M_NET_EVENT_EDGE);
+            MError err = event_.EnableEvents(M_NET_EVENT_READ|M_NET_EVENT_LEVEL);
             if (err != MError::No)
             {
                 OnErrorCallback(err);

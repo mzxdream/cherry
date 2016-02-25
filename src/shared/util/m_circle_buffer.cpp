@@ -11,7 +11,7 @@ MCircleBuffer::MCircleBuffer(size_t len)
 
 MCircleBuffer::~MCircleBuffer()
 {
-    delete p_buf_;
+    delete[] p_buf_;
 }
 
 bool MCircleBuffer::Peek(void *p_buf, size_t len)
