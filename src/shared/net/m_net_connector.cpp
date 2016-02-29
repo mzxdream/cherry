@@ -140,6 +140,11 @@ MError MNetConnector::ReadBuf(void *p_buf, size_t len)
     return MError::No;
 }
 
+size_t MNetConnector::GetReadBufLen() const
+{
+    return read_buffer_.GetLen();
+}
+
 MError MNetConnector::WriteBuf(const char *p_buf, size_t len)
 {
     if (write_ready_)
@@ -178,6 +183,11 @@ MError MNetConnector::WriteBuf(const char *p_buf, size_t len)
         return write_buffer_.Append(p_buf, len) ? MError::No : MError::Overflow;
     }
     return MError::No;
+}
+
+size_t MNetConnector::GetWriteBufLen() const
+{
+    return write_buffer_.GetLen();
 }
 
 void MNetConnector::OnReadCallback()

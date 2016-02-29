@@ -6,28 +6,22 @@
 #include <util/m_type_define.h>
 #include <mutex>
 
-struct NetPackage
-{
-    uint32_t cmd;
-    char *p_content;
-    uint16_t content_len;
-};
+#define NET_READ_LEN 2048
+#define NET_WRITE_LEN 2048
 
 class NetSession
 {
 public:
-    NetSession(MSocket *p_sock, MNetEventLoopThread *p_event_loop_thread);
+    NetSession(MSocket *p_sock, MNetEventLoopThread *p_event_loop_thread, const std::function<void (MError)> &error_cb);
     ~NetSession();
     NetSession(const NetSession &) = delete;
     NetSession& operator=(const NetSession &) = delete;
 private:
-    bool SendNetPkg(const NetPackage &pkg);
+    bool SendPackage(const char *p_buf, size_t len);
     void Update();
 public:
     void OnReadCallback();
     void OnWriteCallback();
-    void OnWriteCompleteCallback();
-    void OnErrorCallback(MError err);
 private:
     MNetConnector connector_;
     MNetEventLoopThread *p_event_loop_thread_;

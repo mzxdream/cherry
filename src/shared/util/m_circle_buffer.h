@@ -18,6 +18,7 @@ public:
     bool AddEndLen(size_t len);
     std::pair<const char*, size_t> GetNextData();
     bool AddStartLen(size_t len);
+    size_t GetLen() const;
 private:
     char *p_buf_;
     size_t len_;

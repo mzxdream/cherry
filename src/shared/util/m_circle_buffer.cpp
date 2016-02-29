@@ -171,3 +171,15 @@ bool MCircleBuffer::AddStartLen(size_t len)
     }
     return true;
 }
+
+size_t MCircleBuffer::GetLen() const
+{
+    if (p_end_ >= p_start_)
+    {
+        return p_end_ - p_start_;
+    }
+    else
+    {
+        return len_ - static_cast<size_t>(p_start_-p_end_);
+    }
+}

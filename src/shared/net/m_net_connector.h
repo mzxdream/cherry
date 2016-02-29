@@ -11,7 +11,7 @@ class MNetConnector
 {
 public:
     explicit MNetConnector(MSocket *p_sock, MNetEventLoop *p_event_loop
-        , const std::function<void ()> &connect_cb_, const std::function<void ()> &read_cb, const std::function<void ()> &write_complete_cb, const std::function<void (MError)> &error_cb
+        , const std::function<void ()> &connect_cb, const std::function<void ()> &read_cb, const std::function<void ()> &write_complete_cb, const std::function<void (MError)> &error_cb
         , bool need_free_sock, size_t read_len, size_t write_len);
     ~MNetConnector();
     MNetConnector(const MNetConnector &) = delete;
@@ -37,7 +37,9 @@ public:
 
     MError Connect(const std::string &ip, unsigned port);
     MError ReadBuf(void *p_buf, size_t len);
+    size_t GetReadBufLen() const;
     MError WriteBuf(const char *p_buf, size_t len);
+    size_t GetWriteBufLen() const;
 public:
     void OnReadCallback();
     void OnWriteCallback();
