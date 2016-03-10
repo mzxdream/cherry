@@ -6,16 +6,20 @@
 #include <util/m_type_define.h>
 #include <mutex>
 
-#define NET_READ_LEN 2048
-#define NET_WRITE_LEN 2048
-
 class NetSession
 {
 public:
-    NetSession(MSocket *p_sock, MNetEventLoopThread *p_event_loop_thread, const std::function<void (MError)> &error_cb);
+    NetSession(MSocket *p_sock, MNetEventLoopThread *p_event_loop_thread, const std::function<void (char*, size_t)> &read_cb, const std::function<void (MError)> &error_cb, size_t read_len, size_t write_len);
     ~NetSession();
     NetSession(const NetSession &) = delete;
     NetSession& operator=(const NetSession &) = delete;
+public:
+    void SetID(int64_t id);
+    int64_t GetID() const;
+    MSocket* GetSocket();
+    void SetReadCallback(const std::function<void (char*, size_t)> &read_cb);
+    void SetErrorCallback(const std::function<void (MError)> &error_cb);
+    MError EnableReadWrite(bool enable);
 private:
     bool SendPackage(const char *p_buf, size_t len);
     void Update();

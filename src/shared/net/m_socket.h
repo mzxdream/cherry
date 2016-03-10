@@ -40,7 +40,7 @@ public:
     MError Create(MSocketFamily family, MSocketType type, MSocketProtocol proto);
     MError Close();
     MError Bind(const std::string &ip, unsigned port);
-    MError Listen(int backlog);
+    MError Listen(int backlog = 64);
     MError Accept(MSocket &sock);
     MError Connect(const std::string &ip, unsigned port);
     std::pair<int, MError> Send(const char *p_buf, int len);
@@ -53,7 +53,7 @@ public:
     const std::string& GetRemoteIP() const;
     unsigned GetRemotePort() const;
 public:
-    MError CreateNonblockReuseAddrListener(const std::string &ip, unsigned short port, int backlog);
+    MError CreateNonblockReuseAddrListener(const std::string &ip, unsigned short port, int backlog = 64);
 private:
     int sock_;
     std::string bind_ip_;

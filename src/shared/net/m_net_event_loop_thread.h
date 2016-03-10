@@ -8,7 +8,7 @@
 #include <list>
 
 class MNetEventLoopThread
-    :public MThread
+    :private MThread
 {
 public:
     MNetEventLoopThread(size_t single_process_events = 128);
