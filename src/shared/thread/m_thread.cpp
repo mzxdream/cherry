@@ -3,8 +3,8 @@
 #include <util/m_logger.h>
 
 MThread::MThread()
-    :need_run_(false)
-    ,running_(false)
+    :tid_(0)
+    ,stop_flag_(false)
 {
 }
 
@@ -15,19 +15,10 @@ MThread::~MThread()
 
 MError MThread::Start()
 {
-    if (need_run_
-        || running_)
-    {
-        MLOG(MGetLibLogger(), MERR, "thread is running");
-        return MError::Running;
-    }
-    need_run_ = true;
-    running_ = true;
-    int err = pthread_create(&th_, nullptr, &ThreadMain, this);
+    stop_flag_ = false;
+    int err = pthread_create(&tid_, nullptr, &ThreadMain, this);
     if (err != 0)
     {
-        need_run_ = false;
-        running_ = false;
         MLOG(MGetLibLogger(), MERR, "create thread failed error:", err);
         return MError::Unknown;
     }
@@ -36,22 +27,16 @@ MError MThread::Start()
 
 void MThread::Stop()
 {
-    if (need_run_)
-    {
-        need_run_ = false;
-    }
+    stop_flag_ = true;
 }
 
 MError MThread::Join()
 {
-    if (running_)
+    int err = pthread_join(tid_, nullptr);
+    if (err != 0)
     {
-        int err = pthread_join(th_, nullptr);
-        if (err != 0)
-        {
-            MLOG(MGetLibLogger(), MERR, "join thread failed err:", err);
-            return MError::Unknown;
-        }
+        MLOG(MGetLibLogger(), MERR, "join thread failed err:", err);
+        return MError::Unknown;
     }
     return MError::No;
 }
@@ -62,6 +47,16 @@ MError MThread::StopAndJoin()
     return Join();
 }
 
+m_thread_t MThread::GetPID() const
+{
+    return tid_;
+}
+
+m_thread_t MThread::GetCurrentPID()
+{
+    return pthread_self();
+}
+
 void* MThread::ThreadMain(void *p_param)
 {
     MThread *p_th = static_cast<MThread*>(p_param);
@@ -70,20 +65,16 @@ void* MThread::ThreadMain(void *p_param)
         MLOG(MGetLibLogger(), MERR, "param is null");
         return nullptr;
     }
-    do
+    if (!p_th->_BeforeRun())
     {
-        if (!p_th->DoBeforeThreadStart())
-        {
-            MLOG(MGetLibLogger(), MERR, "do before thread start failed");
-            break;
-        }
-        while (p_th->need_run_)
-        {
-            p_th->DoRun();
-        }
-        p_th->DoAfterThreadStop();
-    } while (0);
-    p_th->running_ = false;
-    pthread_exit(nullptr);
+        MLOG(MGetLibLogger(), MERR, "before run failed");
+        return nullptr;
+    }
+    while (!p_th->stop_flag_)
+    {
+        p_th->_Run();
+    }
+    p_th->_AfterRun();
+    //pthread_exit(nullptr);
     return nullptr;
 }

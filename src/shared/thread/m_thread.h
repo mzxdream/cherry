@@ -4,6 +4,7 @@
 #include <pthread.h>
 #include <string>
 #include <util/m_errno.h>
+#include <util/m_type_define.h>
 
 class MThread
 {
@@ -17,16 +18,17 @@ public:
     void Stop();
     MError Join();
     MError StopAndJoin();
+    m_thread_t GetPID() const;
+    static m_thread_t GetCurrentPID();
 private:
-    virtual bool DoBeforeThreadStart() { return true; }
-    virtual void DoAfterThreadStop() {}
-    virtual void DoRun() = 0;
+    virtual bool _BeforeRun() { return true; }
+    virtual void _AfterRun() {}
+    virtual void _Run() = 0;
 private:
     static void* ThreadMain(void *p_param);
 private:
-    pthread_t th_;
-    bool need_run_;
-    bool running_;
+    m_thread_t tid_;
+    bool stop_flag_;
 };
 
 #endif

@@ -4,6 +4,8 @@
 #include <stdint.h>
 #include <string>
 
+typedef pthread_t m_thread_t;
+
 class MBlob final
 {
 public:
