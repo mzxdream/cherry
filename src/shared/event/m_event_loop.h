@@ -11,8 +11,8 @@
 class MEventLoop
 {
 public:
-    explicit MEventLoop();
-    virtual ~MEventLoop();
+    MEventLoop();
+    ~MEventLoop();
     MEventLoop(const MEventLoop &) = delete;
     MEventLoop& operator=(const MEventLoop &) = delete;
 public:
@@ -30,22 +30,22 @@ public:
     MError AddTimerEvent(MTimerEvent *p_event);
     MError DelTimerEvent(MTimerEvent *p_event);
 
-    MError AddCircleEventBeforeLoop(MCircleEvent *p_event);
-    MError DelCircleEventBeforeLoop(MCircleEvent *p_event);
+    MError AddBeforeIdleEvent(MIdleEvent *p_event);
+    MError DelBeforeIdleEvent(MIdleEvent *p_event);
 
-    MError AddCircleEventAfterLoop(MCircleEvent *p_event);
-    MError DelCircleEventAfterLoop(MCircleEvent *p_event);
+    MError AddAfterIdleEvent(MIdleEvent *p_event);
+    MError DelAfterIdleEvent(MIdleEvent *p_event);
 
     MError Interrupt();//thread safe
 
     MError DispatchEvents(int timeout = -1);
 private:
     MError AddInterrupt();
-    int64_t GetLeastTime();
+    int    GetNextTimeout(int timeout);
     MError DispatchIOEvents(int timeout);
     MError DispatchTimerEvents();
-    MError DispatchCircleEventsBeforeLoop();
-    MError DispatchCircleEventsAfterLoop();
+    MError DispatchBeforeIdleEvents();
+    MError DispatchAfterIdleEvents();
 private:
     int epoll_fd_;
     int64_t cur_time_;//milliseconds
@@ -53,8 +53,8 @@ private:
     std::vector<epoll_event> io_event_list_;
     unsigned io_event_count_;
     std::multimap<int64_t, MTimerEvent*> timer_events_;
-    std::list<MCircleEvent*> circle_before_events_;
-    std::list<MCircleEvent*> circle_after_events_;
+    std::list<MIdleEvent*> before_idle_events_;
+    std::list<MIdleEvent*> after_idle_events_;
 };
 
 #endif

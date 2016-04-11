@@ -88,8 +88,8 @@ unsigned MEventLoop::GetIOEventCount() const
 
 unsigned MEventLoop::GetAllEventCount() const
 {
-    return GetIOEventCount() + timer_events_.size()
-        + circle_before_events_.size() + circle_after_events_.size();
+    return io_event_count_ + timer_events_.size()
+        + before_idle_events_.size() + after_idle_events_.size();
 }
 
 MError MEventLoop::AddIOEvent(MIOEvent *p_event)
@@ -155,7 +155,7 @@ MError MEventLoop::AddTimerEvent(MTimerEvent *p_event)
         MLOG(MGetLibLogger(), MERR, "event is invalid");
         return MError::Invalid;
     }
-    int64_t timeout = GetTime() + p_event->GetTimeout();
+    int64_t timeout = cur_time_ + p_event->GetTimeout();
     auto ret = timer_events_.insert(std::make_pair(timeout, p_event));
     if (!ret.second)
     {
@@ -180,56 +180,56 @@ MError MEventLoop::DelTimerEvent(MTimerEvent *p_event)
     return MError::No;
 }
 
-MError MEventLoop::AddCircleEventBeforeLoop(MCircleEvent *p_event)
+MError MEventLoop::AddBeforeIdleEvent(MIdleEvent *p_event)
 {
     if (!p_event)
     {
         MLOG(MGetLibLogger(), MERR, "event is invalid");
         return MError::Invalid;
     }
-    circle_before_events_.push_back(p_event);
-    auto it = circle_before_events_.end();
+    before_idle_events_.push_back(p_event);
+    auto it = before_idle_events_.end();
     p_event->SetLoopLocation(--it);
     return MError::No;
 }
 
-MError MEventLoop::DelCircleEventBeforeLoop(MCircleEvent *p_event)
+MError MEventLoop::DelBeforeIdleEvent(MIdleEvent *p_event)
 {
     if (!p_event)
     {
         MLOG(MGetLibLogger(), MERR, "event is invalid");
         return MError::Invalid;
     }
-    if (p_event->GetLoopLocation() != circle_before_events_.end())
+    if (p_event->GetLoopLocation() != before_idle_events_.end())
     {
-        circle_before_events_.erase(p_event->GetLoopLocation());
+        before_idle_events_.erase(p_event->GetLoopLocation());
     }
     return MError::No;
 }
 
-MError MEventLoop::AddCircleEventAfterLoop(MCircleEvent *p_event)
+MError MEventLoop::AddAfterIdleEvent(MIdleEvent *p_event)
 {
     if (!p_event)
     {
         MLOG(MGetLibLogger(), MERR, "event is invalid");
         return MError::Invalid;
     }
-    circle_after_events_.push_back(p_event);
-    auto it = circle_after_events_.end();
+    after_idle_events_.push_back(p_event);
+    auto it = after_idle_events_.end();
     p_event->SetLoopLocation(--it);
     return MError::No;
 }
 
-MError MEventLoop::DelCircleEventAfterLoop(MCircleEvent *p_event)
+MError MEventLoop::DelAfterIdleEvent(MIdleEvent *p_event)
 {
     if (!p_event)
     {
         MLOG(MGetLibLogger(), MERR, "event is invalid");
         return MError::Invalid;
     }
-    if (p_event->GetLoopLocation() != circle_after_events_.end())
+    if (p_event->GetLoopLocation() != after_idle_events_.end())
     {
-        circle_after_events_.erase(p_event->GetLoopLocation());
+        after_idle_events_.erase(p_event->GetLoopLocation());
     }
     return MError::No;
 }
@@ -249,12 +249,46 @@ MError MEventLoop::Interrupt()
 
 MError MEventLoop::DispatchEvents(int timeout)
 {
+    MError err = DispatchBeforeIdleEvents();
+    if (err != MError::No)
+    {
+        MLOG(MGetLibLogger(), MERR, "DispatchBeforeIdleEvents failed");
+        return err;
+    }
+    timeout = GetNextTimeout(timeout);
+    err = DispatchIOEvents(timeout);
+    if (err != MError::No)
+    {
+        MLOG(MGetLibLogger(), MERR, "DispatchIOEvents failed");
+        return err;
+    }
+    cur_time_ = MTimer::GetTime();
+    err = DispatchTimerEvents();
+    if (err != MError::No)
+    {
+        MLOG(MGetLibLogger(), MERR, "DispatchTimerEvents failed");
+        return err;
+    }
+    err = DispatchAfterIdleEvents();
+    if (err != MError::No)
+    {
+        MLOG(MGetLibLogger(), MERR, "DispatchAfterIdleEvents failed");
+        return err;
+    }
     return MError::No;
 }
 
-int64_t MEventLoop::GetLeastTime()
+int MEventLoop::GetNextTimeout(int timeout)
 {
-    return -1;
+    for (const auto &it : timer_events_)
+    {
+        int least_time = std::max(0, static_cast<int>(it.first - cur_time_));
+        if (timeout < 0 || timeout > least_time)
+        {
+            timeout = least_time;
+        }
+    }
+    return timeout;
 }
 
 MError MEventLoop::DispatchIOEvents(int timeout)
@@ -264,16 +298,70 @@ MError MEventLoop::DispatchIOEvents(int timeout)
 
 MError MEventLoop::DispatchTimerEvents()
 {
+    auto it = timer_events_.begin();
+    for (; it != timer_events_.end(); )
+    {
+        MTimerEvent *p_event = it->second;
+        if (!p_event)
+        {
+            it = timer_events_.erase(it);
+            continue;
+        }
+        p_event->OnCallback();
+        if (!p_event->NeedRepeat())
+        {
+            it = timer_events_.erase(it);
+            p_event->SetLoopLocation(timer_events_.end());
+            continue;
+        }
+        ++it;
+    }
     return MError::No;
 }
 
-MError MEventLoop::DispatchCircleEventsBeforeLoop()
+MError MEventLoop::DispatchBeforeIdleEvents()
 {
+    auto it = before_idle_events_.begin();
+    for (; it != before_idle_events_.end(); )
+    {
+        MIdleEvent *p_event = *it;
+        if (!p_event)
+        {
+            it = before_idle_events_.erase(it);
+            continue;
+        }
+        p_event->OnCallback();
+        if (!p_event->NeedRepeat())
+        {
+            it = before_idle_events_.erase(it);
+            p_event->SetLoopLocation(before_idle_events_.end());
+            continue;
+        }
+        ++it;
+    }
     return MError::No;
 }
 
-MError MEventLoop::DispatchCircleEventsAfterLoop()
+MError MEventLoop::DispatchAfterIdleEvents()
 {
+    auto it = after_idle_events_.begin();
+    for (; it != after_idle_events_.end(); )
+    {
+        MIdleEvent *p_event = *it;
+        if (!p_event)
+        {
+            it = after_idle_events_.erase(it);
+            continue;
+        }
+        p_event->OnCallback();
+        if (!p_event->NeedRepeat())
+        {
+            it = after_idle_events_.erase(it);
+            p_event->SetLoopLocation(after_idle_events_.end());
+            continue;
+        }
+        ++it;
+    }
     return MError::No;
 }
 
