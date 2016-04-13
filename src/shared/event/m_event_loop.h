@@ -8,6 +8,9 @@
 #include <util/m_type_define.h>
 #include <sys/epoll.h>
 
+#define IOEVENT_IN 1
+#define IOEVENT_OUT 2
+
 class MEventLoop
 {
 public:
@@ -20,6 +23,7 @@ public:
     void Clear();
 
     int64_t GetTime() const;
+    void UpdateTime();
     unsigned GetIOEventCount() const;
     unsigned GetAllEventCount() const;
 
@@ -41,8 +45,7 @@ public:
     MError DispatchEvents(int timeout = -1);
 private:
     MError AddInterrupt();
-    int    GetNextTimeout(int timeout);
-    MError DispatchIOEvents(int timeout);
+    MError DispatchIOEvents(bool forever, int64_t outdate_time);
     MError DispatchTimerEvents();
     MError DispatchBeforeIdleEvents();
     MError DispatchAfterIdleEvents();
