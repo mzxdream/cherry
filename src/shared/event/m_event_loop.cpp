@@ -113,6 +113,7 @@ MError MEventLoop::AddIOEvent(MIOEvent *p_event)
         return MError::Unknown;
     }
     ++io_event_count_;
+    p_event->SetEventActive(true);
     return MError::No;
 }
 
@@ -150,6 +151,7 @@ MError MEventLoop::DelIOEvent(MIOEvent *p_event)
         return MError::Unknown;
     }
     --io_event_count_;
+    p_event->SetEventActive(false);
     return MError::No;
 }
 
@@ -167,6 +169,7 @@ MError MEventLoop::AddTimerEvent(MTimerEvent *p_event)
         return MError::Unknown;
     }
     p_event->SetLoopLocation(ret.first);
+    p_event->SetEventActive(true);
     return MError::No;
 }
 
@@ -177,11 +180,8 @@ MError MEventLoop::DelTimerEvent(MTimerEvent *p_event)
         MLOG(MGetLibLogger(), MERR, "event is invalid");
         return MError::Invalid;
     }
-    if (p_event->GetLoopLocation() != timer_events_.end())
-    {
-        timer_events_.erase(p_event->GetLoopLocation());
-        p_event->SetLoopLocation(timer_events_.end());
-    }
+    timer_events_.erase(p_event->GetLoopLocation());
+    p_event->SetEventActive(false);
     return MError::No;
 }
 
@@ -195,6 +195,7 @@ MError MEventLoop::AddBeforeIdleEvent(MIdleEvent *p_event)
     before_idle_events_.push_back(p_event);
     auto it = before_idle_events_.end();
     p_event->SetLoopLocation(--it);
+    p_event->SetEventActive(true);
     return MError::No;
 }
 
@@ -205,11 +206,8 @@ MError MEventLoop::DelBeforeIdleEvent(MIdleEvent *p_event)
         MLOG(MGetLibLogger(), MERR, "event is invalid");
         return MError::Invalid;
     }
-    if (p_event->GetLoopLocation() != before_idle_events_.end())
-    {
-        before_idle_events_.erase(p_event->GetLoopLocation());
-        p_event->SetLoopLocation(before_idle_events_.end());
-    }
+    before_idle_events_.erase(p_event->GetLoopLocation());
+    p_event->SetEventActive(false);
     return MError::No;
 }
 
@@ -223,6 +221,7 @@ MError MEventLoop::AddAfterIdleEvent(MIdleEvent *p_event)
     after_idle_events_.push_back(p_event);
     auto it = after_idle_events_.end();
     p_event->SetLoopLocation(--it);
+    p_event->SetEventActive(true);
     return MError::No;
 }
 
@@ -233,11 +232,8 @@ MError MEventLoop::DelAfterIdleEvent(MIdleEvent *p_event)
         MLOG(MGetLibLogger(), MERR, "event is invalid");
         return MError::Invalid;
     }
-    if (p_event->GetLoopLocation() != after_idle_events_.end())
-    {
-        after_idle_events_.erase(p_event->GetLoopLocation());
-        p_event->SetLoopLocation(after_idle_events_.end());
-    }
+    after_idle_events_.erase(p_event->GetLoopLocation());
+    p_event->SetEventActive(false);
     return MError::No;
 }
 
@@ -383,7 +379,7 @@ MError MEventLoop::DispatchTimerEvents()
         p_event->OnCallback();
         if (!p_event->NeedRepeat())
         {
-            p_event->SetLoopLocation(timer_events_.end());
+            p_event->SetEventActive(false);
         }
         else
         {
@@ -415,7 +411,7 @@ MError MEventLoop::DispatchBeforeIdleEvents()
         if (!p_event->NeedRepeat())
         {
             it = before_idle_events_.erase(it);
-            p_event->SetLoopLocation(before_idle_events_.end());
+            p_event->SetEventActive(false);
             continue;
         }
         ++it;
@@ -438,7 +434,7 @@ MError MEventLoop::DispatchAfterIdleEvents()
         if (!p_event->NeedRepeat())
         {
             it = after_idle_events_.erase(it);
-            p_event->SetLoopLocation(after_idle_events_.end());
+            p_event->SetEventActive(false);
             continue;
         }
         ++it;

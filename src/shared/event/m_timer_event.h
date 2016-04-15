@@ -2,6 +2,7 @@
 #define _M_TIMER_EVENT_H_
 
 #include <util/m_type_define.h>
+#include <util/m_errno.h>
 #include <map>
 #include <functional>
 
