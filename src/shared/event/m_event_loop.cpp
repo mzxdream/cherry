@@ -50,7 +50,7 @@ MError MEventLoop::Init()
     {
         return err;
     }
-    cur_time_ = MTimer::GetTime();
+    UpdateTime();
     io_event_list_.resize(1024);
     io_event_count_ = 0;
     return MError::No;
@@ -83,7 +83,7 @@ int64_t MEventLoop::GetTime() const
 
 void MEventLoop::UpdateTime()
 {
-    cur_time_ = CTimer::GetTime();
+    cur_time_ = MTimer::GetTime();
 }
 
 unsigned MEventLoop::GetIOEventCount() const
@@ -113,7 +113,6 @@ MError MEventLoop::AddIOEvent(MIOEvent *p_event)
         return MError::Unknown;
     }
     ++io_event_count_;
-    p_event->SetEventActive(true);
     return MError::No;
 }
 
@@ -151,37 +150,28 @@ MError MEventLoop::DelIOEvent(MIOEvent *p_event)
         return MError::Unknown;
     }
     --io_event_count_;
-    p_event->SetEventActive(false);
     return MError::No;
 }
 
-MError MEventLoop::AddTimerEvent(MTimerEvent *p_event)
+std::pair<MTimerEventLocation, MError> MEventLoop::AddTimerEvent(int64_t start_time, const std::function<void ()> &cb)
 {
-    if (!p_event)
+    if (!cb)
     {
-        MLOG(MGetLibLogger(), MERR, "event is invalid");
-        return MError::Invalid;
+        MLOG(MGetLibLogger(), MERR, "callback is invalid");
+        return std::make_pair(timer_events_.end(), MError::Invalid);
     }
-    auto ret = timer_events_.insert(std::make_pair(p_event->GetStartTime(), p_event));
+    auto ret = timer_events_.insert(std::make_pair(start_time, cb));
     if (!ret.second)
     {
         MLOG(MGetLibLogger(), MERR, "insert failed");
-        return MError::Unknown;
+        return std::make_pair(timer_events_.end(), MError::Unknown);
     }
-    p_event->SetLoopLocation(ret.first);
-    p_event->SetEventActive(true);
-    return MError::No;
+    return std::make_pair(ret.first, MError::No);
 }
 
-MError MEventLoop::DelTimerEvent(MTimerEvent *p_event)
+MError MEventLoop::DelTimerEvent(const MTimerEventLocation &location)
 {
-    if (!p_event)
-    {
-        MLOG(MGetLibLogger(), MERR, "event is invalid");
-        return MError::Invalid;
-    }
-    timer_events_.erase(p_event->GetLoopLocation());
-    p_event->SetEventActive(false);
+    timer_events_.erase(location);
     return MError::No;
 }
 
@@ -195,7 +185,6 @@ MError MEventLoop::AddBeforeIdleEvent(MIdleEvent *p_event)
     before_idle_events_.push_back(p_event);
     auto it = before_idle_events_.end();
     p_event->SetLoopLocation(--it);
-    p_event->SetEventActive(true);
     return MError::No;
 }
 
@@ -207,7 +196,6 @@ MError MEventLoop::DelBeforeIdleEvent(MIdleEvent *p_event)
         return MError::Invalid;
     }
     before_idle_events_.erase(p_event->GetLoopLocation());
-    p_event->SetEventActive(false);
     return MError::No;
 }
 
@@ -221,7 +209,6 @@ MError MEventLoop::AddAfterIdleEvent(MIdleEvent *p_event)
     after_idle_events_.push_back(p_event);
     auto it = after_idle_events_.end();
     p_event->SetLoopLocation(--it);
-    p_event->SetEventActive(true);
     return MError::No;
 }
 
@@ -233,7 +220,6 @@ MError MEventLoop::DelAfterIdleEvent(MIdleEvent *p_event)
         return MError::Invalid;
     }
     after_idle_events_.erase(p_event->GetLoopLocation());
-    p_event->SetEventActive(false);
     return MError::No;
 }
 
@@ -368,7 +354,8 @@ MError MEventLoop::DispatchIOEvents(bool forever, int64_t outdate_time)
 MError MEventLoop::DispatchTimerEvents()
 {
     MTimerEvent *p_event = nullptr;
-    for (auto it = timer_events_.begin(); it != timer_events_.end(); it = timer_events_.begin())
+    auto it = timer_events_.begin();
+    while (it != timer_events_.end())
     {
         if (it->first > cur_time_)
         {
@@ -376,68 +363,45 @@ MError MEventLoop::DispatchTimerEvents()
         }
         p_event = it->second;
         timer_events_.erase(it);
-        p_event->OnCallback();
-        if (!p_event->NeedRepeat())
+        if (p_event)
         {
-            p_event->SetEventActive(false);
+            p_event->OnCallback();
         }
-        else
-        {
-            int64_t next_time = cur_time_ + p_event->GetTimeout();
-            auto ret = timer_events_.insert(std::make_pair(next_time, p_event));
-            if (!ret.second)
-            {
-                MLOG(MGetLibLogger(), MERR, "insert failed");
-                return MError::Unknown;
-            }
-            p_event->SetLoopLocation(ret.first);
-        }
+        it = timer_events_.begin();
     }
     return MError::No;
 }
 
 MError MEventLoop::DispatchBeforeIdleEvents()
 {
-    auto it = before_idle_events_.begin();
-    for (; it != before_idle_events_.end(); )
+    std::list<MIdleEvent*> event_list;
+    event_list.swap(before_idle_events_);
+    auto it = event_list.begin();
+    while (it != event_list.end())
     {
         MIdleEvent *p_event = *it;
-        if (!p_event)
+        if (p_event)
         {
-            it = before_idle_events_.erase(it);
-            continue;
+            p_event->OnCallback();
         }
-        p_event->OnCallback();
-        if (!p_event->NeedRepeat())
-        {
-            it = before_idle_events_.erase(it);
-            p_event->SetEventActive(false);
-            continue;
-        }
-        ++it;
+        it = event_list.erase(it);
     }
     return MError::No;
 }
 
 MError MEventLoop::DispatchAfterIdleEvents()
 {
-    auto it = after_idle_events_.begin();
-    for (; it != after_idle_events_.end(); )
+    std::list<MIdleEvent*> event_list;
+    event_list.swap(after_idle_events_);
+    auto it = event_list.begin();
+    while (it != event_list.end())
     {
         MIdleEvent *p_event = *it;
-        if (!p_event)
+        if (p_event)
         {
-            it = after_idle_events_.erase(it);
-            continue;
+            p_event->OnCallback();
         }
-        p_event->OnCallback();
-        if (!p_event->NeedRepeat())
-        {
-            it = after_idle_events_.erase(it);
-            p_event->SetEventActive(false);
-            continue;
-        }
-        ++it;
+        it = event_list.erase(it);
     }
     return MError::No;
 }
