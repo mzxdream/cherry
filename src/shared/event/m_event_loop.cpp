@@ -7,7 +7,6 @@ MEventLoop::MEventLoop()
     :epoll_fd_(-1)
     ,cur_time_(0)
     ,interrupter_{-1, -1}
-    ,io_event_count_(0)
 {
 }
 
@@ -27,7 +26,7 @@ MError MEventLoop::AddInterrupt()
     fcntl(interrupter_[1], F_SETFL, O_NONBLOCK);
     epoll_event ee;
     ee.events = EPOLLIN | EPOLLERR | EPOLLET;
-    ee.data.ptr = interrupter_;
+    ee.data.fd = interrupter_[0];
     if (epoll_ctl(epoll_fd_, EPOLL_CTL_ADD, interrupter_[0], &ee) == -1)
     {
         MLOG(MGetLibLogger(), MERR, "epoll ctl failed, errno:", errno);
@@ -52,7 +51,6 @@ MError MEventLoop::Init()
     }
     UpdateTime();
     io_event_list_.resize(1024);
-    io_event_count_ = 0;
     return MError::No;
 }
 
@@ -86,70 +84,105 @@ void MEventLoop::UpdateTime()
     cur_time_ = MTimer::GetTime();
 }
 
-unsigned MEventLoop::GetIOEventCount() const
+size_t MEventLoop::GetIOEventCount() const
 {
-    return io_event_count_;
+    return io_events_.size();
 }
 
-unsigned MEventLoop::GetAllEventCount() const
+size_t MEventLoop::GetTimerEventCount() const
 {
-    return io_event_count_ + timer_events_.size()
-        + before_idle_events_.size() + after_idle_events_.size();
+    return timer_events_.size();
 }
 
-MError MEventLoop::AddIOEvent(MIOEvent *p_event)
+size_t MEventLoop::GetBeforeEventCount() const
 {
-    if (!p_event)
+    return before_events_.size();
+}
+
+size_t MEventLoop::GetAfterEventCount() const
+{
+    return after_events_.size();
+}
+
+size_t MEventLoop::GetAllEventCount() const
+{
+    return GetIOEventCount() + GetTimerEventCount()
+        + GetBeforeEventCount() + GetAfterEventCount();
+}
+
+MError MEventLoop::AddIOEvent(int fd, unsigned events, const std::function<void (unsigned)> &cb)
+{
+    if (fd < 0)
     {
-        MLOG(MGetLibLogger(), MERR, "event is invalid");
+        MLOG(MGetLibLogger(), MERR, "fd is less than 0");
+        return MError::Invalid;
+    }
+    if (!cb)
+    {
+        MLOG(MGetLibLogger(), MERR, "callback is invalid");
         return MError::Invalid;
     }
     epoll_event ee;
-    ee.events = p_event->GetEvents();
-    ee.data.ptr = p_event;
-    if (epoll_ctl(epoll_fd_, EPOLL_CTL_ADD, p_event->GetFD(), &ee) == -1)
+    ee.events = events;
+    ee.data.fd = fd;
+    int op = EPOLL_CTL_ADD;
+    auto iter = io_events_.find(fd);
+    if (iter == io_events_.end())
+    {
+        if (events & (MIOEVENT_IN | MIOEVENT_OUT | MIOEVENT_RDHUP) == 0)
+        {
+            MLOG(MGetLibLogger(), MERR, "events is not in out or rdhup");
+            return MError::Invalid;
+        }
+    }
+    else
+    {
+        op = EPOLL_CTL_MOD;
+        ee.events |= iter->second.first;
+    }
+    if (epoll_ctl(epoll_fd_, op, fd, &ee) == -1)
     {
         MLOG(MGetLibLogger(), MERR, "epoll add failed errno:", errno);
         return MError::Unknown;
     }
-    ++io_event_count_;
-    return MError::No;
-}
-
-MError MEventLoop::ModIOEvent(MIOEvent *p_event)
-{
-    if (!p_event)
+    if (iter == io_events_.end())
     {
-        MLOG(MGetLibLogger(), MERR, "event is invalid");
-        return MError::Invalid;
+        io_events_.insert(std::make_pair(fd, std::make_pair(static_cast<unsigned>(ee.events), cb)));
     }
-    epoll_event ee;
-    ee.events = p_event->GetEvents();
-    ee.data.ptr = p_event;
-    if (epoll_ctl(epoll_fd_, EPOLL_CTL_MOD, p_event->GetFD(), &ee) == -1)
+    else
     {
-        MLOG(MGetLibLogger(), MERR, "epoll mod failed errno:", errno);
-        return MError::Unknown;
+        iter->second.first = ee.events;
+        iter->second.second = cb;
     }
     return MError::No;
 }
 
-MError MEventLoop::DelIOEvent(MIOEvent *p_event)
+MError MEventLoop::DelIOEvent(int fd, unsigned events)
 {
-    if (!p_event)
+    auto iter = io_events_.find(fd);
+    if (iter == io_events_.end())
     {
-        MLOG(MGetLibLogger(), MERR, "event is invalid");
-        return MError::Invalid;
+        return MError::No;
     }
+    iter->second.first &= ~events;
     epoll_event ee;
+    ee.data.fd = fd;
     ee.events = 0;
-    ee.data.ptr = nullptr;
-    if (epoll_ctl(epoll_fd_, EPOLL_CTL_DEL, p_event->GetFD(), &ee) == -1)
+    int op = EPOLL_CTL_DEL;
+    if (iter->second.first & (MIOEVENT_IN | MIOEVENT_OUT | MIOEVENT_RDHUP))
+    {
+        ee.events = iter->second.first;
+        op = EPOLL_CTL_MOD;
+    }
+    if (epoll_ctl(epoll_fd_, op, fd, &ee) == -1)
     {
         MLOG(MGetLibLogger(), MERR, "epoll del failed errno:", errno);
         return MError::Unknown;
     }
-    --io_event_count_;
+    if (op == EPOLL_CTL_DEL)
+    {
+        io_events_.erase(iter);
+    }
     return MError::No;
 }
 
