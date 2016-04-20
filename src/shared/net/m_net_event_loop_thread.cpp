@@ -63,7 +63,7 @@ MError MNetEventLoopThread::Interrupt()
     return event_loop_.Interrupt();
 }
 
-void MNetEventLoopThread::DoRun()
+void MNetEventLoopThread::_Run()
 {
     event_loop_.ProcessEvents();
     std::list<std::function<void ()> > cb_list;

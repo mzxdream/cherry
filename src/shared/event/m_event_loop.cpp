@@ -2,6 +2,7 @@
 #include <fcntl.h>
 #include <util/m_logger.h>
 #include <util/m_timer.h>
+#include <unistd.h>
 
 MEventLoop::MEventLoop()
     :epoll_fd_(-1)
@@ -129,7 +130,7 @@ MError MEventLoop::AddIOEvent(int fd, unsigned events, const std::function<void 
     auto iter = io_events_.find(fd);
     if (iter == io_events_.end())
     {
-        if (events & (MIOEVENT_IN | MIOEVENT_OUT | MIOEVENT_RDHUP) == 0)
+        if ((events & (MIOEVENT_IN | MIOEVENT_OUT | MIOEVENT_RDHUP)) == 0)
         {
             MLOG(MGetLibLogger(), MERR, "events is not in out or rdhup");
             return MError::Invalid;
@@ -194,12 +195,7 @@ std::pair<MTimerEventLocation, MError> MEventLoop::AddTimerEvent(int64_t start_t
         return std::make_pair(timer_events_.end(), MError::Invalid);
     }
     auto ret = timer_events_.insert(std::make_pair(start_time, cb));
-    if (!ret.second)
-    {
-        MLOG(MGetLibLogger(), MERR, "insert failed");
-        return std::make_pair(timer_events_.end(), MError::Unknown);
-    }
-    return std::make_pair(ret.first, MError::No);
+    return std::make_pair(ret, MError::No);
 }
 
 MError MEventLoop::DelTimerEvent(const MTimerEventLocation &location)
@@ -208,51 +204,39 @@ MError MEventLoop::DelTimerEvent(const MTimerEventLocation &location)
     return MError::No;
 }
 
-MError MEventLoop::AddBeforeIdleEvent(MIdleEvent *p_event)
+std::pair<MBeforeEventLocation, MError> MEventLoop::AddBeforeEvent(const std::function<void ()> &cb)
 {
-    if (!p_event)
+    if (!cb)
     {
-        MLOG(MGetLibLogger(), MERR, "event is invalid");
-        return MError::Invalid;
+        MLOG(MGetLibLogger(), MERR, "callback is invalid");
+        return std::make_pair(before_events_.end(), MError::Invalid);
     }
-    before_idle_events_.push_back(p_event);
-    auto it = before_idle_events_.end();
-    p_event->SetLoopLocation(--it);
+    before_events_.push_back(cb);
+    auto it = before_events_.end();
+    return std::make_pair(--it, MError::No);
+}
+
+MError MEventLoop::DelBeforeEvent(const MBeforeEventLocation &location)
+{
+    before_events_.erase(location);
     return MError::No;
 }
 
-MError MEventLoop::DelBeforeIdleEvent(MIdleEvent *p_event)
+std::pair<MAfterEventLocation, MError> MEventLoop::AddAfterEvent(const std::function<void ()> &cb)
 {
-    if (!p_event)
+    if (!cb)
     {
-        MLOG(MGetLibLogger(), MERR, "event is invalid");
-        return MError::Invalid;
+        MLOG(MGetLibLogger(), MERR, "callback is invalid");
+        return std::make_pair(after_events_.end(), MError::Invalid);
     }
-    before_idle_events_.erase(p_event->GetLoopLocation());
-    return MError::No;
+    after_events_.push_back(cb);
+    auto it = after_events_.end();
+    return std::make_pair(--it, MError::No);
 }
 
-MError MEventLoop::AddAfterIdleEvent(MIdleEvent *p_event)
+MError MEventLoop::DelAfterEvent(const MAfterEventLocation &location)
 {
-    if (!p_event)
-    {
-        MLOG(MGetLibLogger(), MERR, "event is invalid");
-        return MError::Invalid;
-    }
-    after_idle_events_.push_back(p_event);
-    auto it = after_idle_events_.end();
-    p_event->SetLoopLocation(--it);
-    return MError::No;
-}
-
-MError MEventLoop::DelAfterIdleEvent(MIdleEvent *p_event)
-{
-    if (!p_event)
-    {
-        MLOG(MGetLibLogger(), MERR, "event is invalid");
-        return MError::Invalid;
-    }
-    after_idle_events_.erase(p_event->GetLoopLocation());
+    after_events_.erase(location);
     return MError::No;
 }
 
@@ -260,7 +244,7 @@ MError MEventLoop::Interrupt()
 {
     epoll_event ee;
     ee.events = EPOLLIN | EPOLLERR | EPOLLET;
-    ee.data.ptr = interrupter_;
+    ee.data.fd = interrupter_[0];
     if (epoll_ctl(epoll_fd_, EPOLL_CTL_MOD, interrupter_[0], &ee) == -1)
     {
         MLOG(MGetLibLogger(), MERR, "epoll ctl failed errno:", errno);
@@ -271,10 +255,10 @@ MError MEventLoop::Interrupt()
 
 MError MEventLoop::DispatchEvents(int timeout)
 {
-    MError err = DispatchBeforeIdleEvents();
+    MError err = DispatchBeforeEvents();
     if (err != MError::No)
     {
-        MLOG(MGetLibLogger(), MERR, "DispatchBeforeIdleEvents failed");
+        MLOG(MGetLibLogger(), MERR, "DispatchBeforeEvents failed");
         return err;
     }
     if (timeout < 0)
@@ -296,7 +280,7 @@ MError MEventLoop::DispatchEvents(int timeout)
         }
         else
         {
-            err = DispatchIOEvents(false, std::min(timer_events_.begin()->first, cur_time_ + timeout);
+            err = DispatchIOEvents(false, std::min(timer_events_.begin()->first, cur_time_ + timeout));
         }
     }
     if (err != MError::No)
@@ -311,10 +295,10 @@ MError MEventLoop::DispatchEvents(int timeout)
         MLOG(MGetLibLogger(), MERR, "DispatchTimerEvents failed");
         return err;
     }
-    err = DispatchAfterIdleEvents();
+    err = DispatchAfterEvents();
     if (err != MError::No)
     {
-        MLOG(MGetLibLogger(), MERR, "DispatchAfterIdleEvents failed");
+        MLOG(MGetLibLogger(), MERR, "DispatchAfterEvents failed");
         return err;
     }
     return MError::No;
@@ -322,9 +306,9 @@ MError MEventLoop::DispatchEvents(int timeout)
 
 MError MEventLoop::DispatchIOEvents(bool forever, int64_t outdate_time)
 {
-    int count = 48;
     int timeout = -1;
     bool interrupt = false;
+    int count = 48;
     do
     {
         if (!forever)
@@ -344,49 +328,46 @@ MError MEventLoop::DispatchIOEvents(bool forever, int64_t outdate_time)
         {
             for (int i = 0; i < nevents; ++i)
             {
-                if (io_event_list_[i].data.ptr == interrupter_)
+                int fd = io_event_list_[i].data.fd;
+                if (fd == interrupter_[0])
                 {
                     interrupt = true;
                     continue;
                 }
-                MIOEvent *p_event = static_cast<MIOEvent*>(io_event_list_[i].data.ptr);
-                if (!p_event)
+                auto iter = io_events_.find(fd);
+                if (iter == io_events_.end())
                 {
-                    MLOG(MGetLibLogger(), MERR, "p_event is nullptr errno:", errno);
+                    MLOG(MGetLibLogger(), MWARN, "fd:", fd, " is not found");
+                    epoll_ctl(epoll_fd_, EPOLL_CTL_DEL, fd, &io_event_list_[i]);
                     continue;
                 }
-                int events = io_event_list_[i].events;
-                if (events & (EPOLLERR|EPOLLHUP))
-                {
-                    MLOG(MGetLibLogger(), MINFO, "socket error:", errno);
-                    p_event->OnCallback(0, MError::Unknown);
-                    continue;
-                }
-                int ev = 0;
-                if (events & EPOLLIN)
-                {
-                    if (events & EPOLLRDHUP)
-                    {
-                        p_event->OnCallback(0, MError::Disconnect);
-                        continue;
-                    }
-                    ev |= IOEVENT_IN;
-                }
-                if (events & EPOLLOUT)
-                {
-                    ev |= IOEVENT_OUT;
-                }
-                p_event->OnCallback(ev, MError::No);
+                (iter->second.second)(io_event_list_[i].events);
             }
         }
+        if (interrupt)
+        {
+            break;
+        }
+        if (nevents > 0)
+        {
+            if (static_cast<size_t>(nevents) == io_event_list_.size() && (--count > 0))
+            {
+                outdate_time = cur_time_;
+                continue;
+            }
+            break;
+        }
         UpdateTime();
-    } while ((forever || (outdate_time > cur_time_)) && (--count != 0) && !interrupt);
+        if (!forever && (outdate_time <= cur_time_))
+        {
+            break;
+        }
+    } while (true);
     return MError::No;
 }
 
 MError MEventLoop::DispatchTimerEvents()
 {
-    MTimerEvent *p_event = nullptr;
     auto it = timer_events_.begin();
     while (it != timer_events_.end())
     {
@@ -394,46 +375,34 @@ MError MEventLoop::DispatchTimerEvents()
         {
             break;
         }
-        p_event = it->second;
+        (it->second)();
         timer_events_.erase(it);
-        if (p_event)
-        {
-            p_event->OnCallback();
-        }
         it = timer_events_.begin();
     }
     return MError::No;
 }
 
-MError MEventLoop::DispatchBeforeIdleEvents()
+MError MEventLoop::DispatchBeforeEvents()
 {
-    std::list<MIdleEvent*> event_list;
-    event_list.swap(before_idle_events_);
+    std::list<std::function<void ()> > event_list;
+    event_list.swap(before_events_);
     auto it = event_list.begin();
     while (it != event_list.end())
     {
-        MIdleEvent *p_event = *it;
-        if (p_event)
-        {
-            p_event->OnCallback();
-        }
+        (*it)();
         it = event_list.erase(it);
     }
     return MError::No;
 }
 
-MError MEventLoop::DispatchAfterIdleEvents()
+MError MEventLoop::DispatchAfterEvents()
 {
-    std::list<MIdleEvent*> event_list;
-    event_list.swap(after_idle_events_);
+    std::list<std::function<void ()> > event_list;
+    event_list.swap(after_events_);
     auto it = event_list.begin();
     while (it != event_list.end())
     {
-        MIdleEvent *p_event = *it;
-        if (p_event)
-        {
-            p_event->OnCallback();
-        }
+        (*it)();
         it = event_list.erase(it);
     }
     return MError::No;

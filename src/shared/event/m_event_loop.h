@@ -9,12 +9,16 @@
 #include <sys/epoll.h>
 #include <functional>
 
-#define MIOEVENT_IN      0x01
-#define MIOEVENT_OUT     0x02
-#define MIOEVENT_RDHUP   0x04
-#define MIOEVENT_ET      0x08
-#define MIOEVENT_ERR     0x10
-#define MIOEVENT_HUP     0x20
+#ifndef EPOLLRDHUP
+#define EPOLLRDHUP 0x2000
+#endif
+
+#define MIOEVENT_IN      EPOLLIN
+#define MIOEVENT_OUT     EPOLLOUT
+#define MIOEVENT_ET      EPOLLET
+#define MIOEVENT_RDHUP   EPOLLRDHUP
+#define MIOEVENT_ERR     EPOLLERR
+#define MIOEVENT_HUP     EPOLLHUP
 
 typedef std::multimap<int64_t, std::function<void ()> >::iterator MTimerEventLocation;
 typedef std::list<std::function<void ()> >::iterator MBeforeEventLocation;
@@ -47,10 +51,10 @@ public:
     MError DelTimerEvent(const MTimerEventLocation &location);
 
     std::pair<MBeforeEventLocation, MError> AddBeforeEvent(const std::function<void ()> &cb);
-    MError DelBeforeEvent(const std::function<void ()> &cb);
+    MError DelBeforeEvent(const MBeforeEventLocation &location);
 
     std::pair<MAfterEventLocation, MError> AddAfterEvent(const std::function<void ()> &cb);
-    MError DelAfterEvent(const std::function<void ()> &cb);
+    MError DelAfterEvent(const MAfterEventLocation &location);
 
     MError Interrupt();
     MError DispatchEvents(int timeout = -1);
@@ -58,8 +62,8 @@ private:
     MError AddInterrupt();
     MError DispatchIOEvents(bool forever, int64_t outdate_time);
     MError DispatchTimerEvents();
-    MError DispatchBeforeIdleEvents();
-    MError DispatchAfterIdleEvents();
+    MError DispatchBeforeEvents();
+    MError DispatchAfterEvents();
 private:
     int epoll_fd_;
     int64_t cur_time_;//milliseconds

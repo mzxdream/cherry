@@ -26,7 +26,7 @@ public:
     void AddCallback(const std::function<void ()> &cb);
     MError Interrupt();
 private:
-    virtual void DoRun() override;
+    virtual void _Run() override;
 private:
     MNetEventLoop event_loop_;
     std::list<std::function<void ()> > cb_list_;
