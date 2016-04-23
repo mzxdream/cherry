@@ -1,7 +1,7 @@
 #include <event/m_event_loop.h>
 #include <fcntl.h>
 #include <util/m_logger.h>
-#include <util/m_timer.h>
+#include <util/m_time.h>
 #include <unistd.h>
 
 MEventLoop::MEventLoop()
@@ -82,7 +82,7 @@ int64_t MEventLoop::GetTime() const
 
 void MEventLoop::UpdateTime()
 {
-    cur_time_ = MTimer::GetTime();
+    cur_time_ = MTime::GetTime();
 }
 
 size_t MEventLoop::GetIOEventCount() const
