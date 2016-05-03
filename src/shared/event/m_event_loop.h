@@ -8,6 +8,7 @@
 #include <util/m_type_define.h>
 #include <sys/epoll.h>
 #include <functional>
+#include <memory>
 
 #ifndef EPOLLRDHUP
 #define EPOLLRDHUP 0x2000
@@ -20,9 +21,55 @@
 #define MIOEVENT_ERR     EPOLLERR
 #define MIOEVENT_HUP     EPOLLHUP
 
-typedef std::multimap<int64_t, std::function<void ()> >::iterator MTimerEventLocation;
-typedef std::list<std::function<void ()> >::iterator MBeforeEventLocation;
-typedef std::list<std::function<void ()> >::iterator MAfterEventLocation;
+class MEventBase
+{
+public:
+    MEventBase()
+        :p_obj_(nullptr)
+        ,p_data_(nullptr)
+        ,fn_disconnect_(nullptr)
+    {
+    }
+public:
+    void *p_obj_;
+    void *p_data_;
+    void (*fn_disconnect_) (void*, void*);
+};
+
+class MEventHandler
+{
+public:
+    MEventHandler() = default;
+    ~MEventHandler() = default;
+    MEventHandler(const MEventHandler &other) = default;
+    MEventHandler& operator=(const MEventHandler &other) = default;
+public:
+    bool Connected() const
+    {
+        return base_.get() && base_->fn_disconnect_;
+    }
+    void Disconnect() const
+    {
+        if (this.Connected())
+        {
+            void *p_obj = base_->p_obj_;
+            void *p_data = base_->p_data_;
+            void (*fn_disconnect) (void*, void*) = base_->fn_disconnect_;
+            base_->fn_disconnect_ = nullptr;
+            fn_disconnect(p_obj, p_data);
+        }
+    }
+    void Reset(MEventBase *p_base)
+    {
+        base_.reset(p_base);
+    }
+private:
+    std::shared_ptr<MEventBase> base_;
+};
+
+typedef std::map<int, std::pair<unsigned, std::function<void (unsigned)> > > MIOEventMap;
+typedef std::multimap<int64_t, std::pair<MEventHandler, std::function<void ()> > > MTimerEventMap;
+typedef std::list<std::pair<> >
 
 class MEventLoop
 {
