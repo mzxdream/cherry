@@ -27,7 +27,7 @@ MError MEventLoop::AddInterrupt()
     fcntl(interrupter_[1], F_SETFL, O_NONBLOCK);
     epoll_event ee;
     ee.events = EPOLLIN | EPOLLERR | EPOLLET;
-    ee.data.fd = interrupter_[0];
+    ee.data.ptr = interrupter_;
     if (epoll_ctl(epoll_fd_, EPOLL_CTL_ADD, interrupter_[0], &ee) == -1)
     {
         MLOG(MGetLibLogger(), MERR, "epoll ctl failed, errno:", errno);
@@ -51,7 +51,7 @@ MError MEventLoop::Init()
         return err;
     }
     UpdateTime();
-    io_event_list_.resize(1024);
+    io_events_.resize(1024);
     return MError::No;
 }
 
@@ -85,30 +85,9 @@ void MEventLoop::UpdateTime()
     cur_time_ = MTime::GetTime();
 }
 
-size_t MEventLoop::GetIOEventCount() const
+MError MEventLoop::AddIOEvent(MIOEventBase *p_event)
 {
-    return io_events_.size();
-}
 
-size_t MEventLoop::GetTimerEventCount() const
-{
-    return timer_events_.size();
-}
-
-size_t MEventLoop::GetBeforeEventCount() const
-{
-    return before_events_.size();
-}
-
-size_t MEventLoop::GetAfterEventCount() const
-{
-    return after_events_.size();
-}
-
-size_t MEventLoop::GetAllEventCount() const
-{
-    return GetIOEventCount() + GetTimerEventCount()
-        + GetBeforeEventCount() + GetAfterEventCount();
 }
 
 MError MEventLoop::AddIOEvent(int fd, unsigned events, const std::function<void (unsigned)> &cb)
