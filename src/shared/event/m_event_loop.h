@@ -7,6 +7,11 @@
 #include <util/m_errno.h>
 #include <util/m_type_define.h>
 #include <sys/epoll.h>
+#include <event/m_event_base.h>
+
+typedef std::multimap<int64_t, MTimerEventBase*>::iterator MTimerEventLocation;
+typedef std::list<MBeforeEventBase*>::iterator MBeforeEventLocation;
+typedef std::list<MAfterEventBase*>::iterator MAfterEventLocation;
 
 class MEventLoop
 {
@@ -23,7 +28,6 @@ public:
     void UpdateTime();
 
     MError AddIOEvent(MIOEventBase *p_event);
-    MError ModIOEvent(MIOEventBase *p_event);
     MError DelIOEvent(MIOEventBase *p_event);
 
     MError AddTimerEvent(MTimerEventBase *p_event);
@@ -35,16 +39,15 @@ public:
     MError AddAfterEvent(MAfterEventBase *p_event);
     MError DelAfterEvent(MAfterEventBase *p_event);
 
-
     MError Interrupt();
-    MError DispatchEvents();
-    MError DispatchEventsOnce(int timeout = -1);
+    MError DispatchEvent();
+    MError DispatchEventOnce(int timeout = -1);
 private:
     MError AddInterrupt();
-    MError DispatchIOEvents(bool forever, int64_t outdate);
-    MError DispatchTimerEvents();
-    MError DispatchBeforeEvents();
-    MError DispatchAfterEvents();
+    MError DispatchIOEvent(bool forever, int64_t outdate);
+    MError DispatchTimerEvent();
+    MError DispatchBeforeEvent();
+    MError DispatchAfterEvent();
 private:
     int epoll_fd_;
     int64_t cur_time_;

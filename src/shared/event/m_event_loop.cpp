@@ -87,135 +87,169 @@ void MEventLoop::UpdateTime()
 
 MError MEventLoop::AddIOEvent(MIOEventBase *p_event)
 {
-
-}
-
-MError MEventLoop::AddIOEvent(int fd, unsigned events, const std::function<void (unsigned)> &cb)
-{
-    if (fd < 0)
+    if (!p_event)
     {
-        MLOG(MGetLibLogger(), MERR, "fd is less than 0");
+        MLOG(MGetLibLogger(), MERR, "event is Invalid");
         return MError::Invalid;
     }
-    if (!cb)
+    if (p_event->GetEvents()
+        & (MIOEVENT_IN | MIOEVENT_OUT | MIOEVENT_RDHUP))
     {
-        MLOG(MGetLibLogger(), MERR, "callback is invalid");
+        MLOG(MGetLibLogger(), MERR, "events is not in out or rdhup");
         return MError::Invalid;
     }
-    epoll_event ee;
-    ee.events = events;
-    ee.data.fd = fd;
     int op = EPOLL_CTL_ADD;
-    auto iter = io_events_.find(fd);
-    if (iter == io_events_.end())
-    {
-        if ((events & (MIOEVENT_IN | MIOEVENT_OUT | MIOEVENT_RDHUP)) == 0)
-        {
-            MLOG(MGetLibLogger(), MERR, "events is not in out or rdhup");
-            return MError::Invalid;
-        }
-    }
-    else
+    if (p_event->IsActived())
     {
         op = EPOLL_CTL_MOD;
-        ee.events |= iter->second.first;
     }
-    if (epoll_ctl(epoll_fd_, op, fd, &ee) == -1)
+    epoll_event ee;
+    ee.events = p_event->GetEvents();
+    ee.data.ptr = p_event;
+    if (epoll_ctl(epoll_fd_, op, p_event->GetFD(), &ee) == -1)
     {
         MLOG(MGetLibLogger(), MERR, "epoll add failed errno:", errno);
         return MError::Unknown;
     }
-    if (iter == io_events_.end())
-    {
-        io_events_.insert(std::make_pair(fd, std::make_pair(static_cast<unsigned>(ee.events), cb)));
-    }
-    else
-    {
-        iter->second.first = ee.events;
-        iter->second.second = cb;
-    }
+    p_event->SetActived(true);
     return MError::No;
 }
 
-MError MEventLoop::DelIOEvent(int fd, unsigned events)
+MError MEventLoop::DelIOEvent(MIOEventBase *p_event)
 {
-    auto iter = io_events_.find(fd);
-    if (iter == io_events_.end())
+    if (!p_event)
+    {
+        MLOG(MGetLibLogger(), MERR, "event is Invalid");
+        return MError::Invalid;
+    }
+    if (!p_event->IsActived())
     {
         return MError::No;
     }
-    iter->second.first &= ~events;
-    epoll_event ee;
-    ee.data.fd = fd;
-    ee.events = 0;
     int op = EPOLL_CTL_DEL;
-    if (iter->second.first & (MIOEVENT_IN | MIOEVENT_OUT | MIOEVENT_RDHUP))
+    if (p_event->GetEvents()
+        & (MIOEVENT_IN | MIOEVENT_OUT | MIOEVENT_RDHUP))
     {
-        ee.events = iter->second.first;
         op = EPOLL_CTL_MOD;
     }
-    if (epoll_ctl(epoll_fd_, op, fd, &ee) == -1)
+    epoll_event ee;
+    ee.events = p_event->GetEvents();
+    ee.data.ptr = p_event;
+    if (epoll_ctl(epoll_fd_, op, p_event->GetFD(), &ee) == -1)
     {
         MLOG(MGetLibLogger(), MERR, "epoll del failed errno:", errno);
         return MError::Unknown;
     }
     if (op == EPOLL_CTL_DEL)
     {
-        io_events_.erase(iter);
+        p_event->SetActived(false);
     }
     return MError::No;
 }
 
-std::pair<MTimerEventLocation, MError> MEventLoop::AddTimerEvent(int64_t start_time, const std::function<void ()> &cb)
+MError MEventLoop::AddTimerEvent(MTimerEventBase *p_event)
 {
-    if (!cb)
+    if (!p_event)
     {
-        MLOG(MGetLibLogger(), MERR, "callback is invalid");
-        return std::make_pair(timer_events_.end(), MError::Invalid);
+        MLOG(MGetLibLogger(), MERR, "event is Invalid");
+        return MError::Invalid;
     }
-    auto ret = timer_events_.insert(std::make_pair(start_time, cb));
-    return std::make_pair(ret, MError::No);
-}
-
-MError MEventLoop::DelTimerEvent(const MTimerEventLocation &location)
-{
-    timer_events_.erase(location);
+    if (p_event->IsActived())
+    {
+        return MError::No;
+    }
+    auto ret = timer_events_.insert(std::make_pair(p_event->GetStartTime(), p_event));
+    if (!ret.second)
+    {
+        MLOG(MGetLibLogger(), MERR, "insert timer event failed");
+        return MError::Unknown;
+    }
+    p_event->SetActived(true);
+    p_event->SetLocation(ret.first);
     return MError::No;
 }
 
-std::pair<MBeforeEventLocation, MError> MEventLoop::AddBeforeEvent(const std::function<void ()> &cb)
+MError MEventLoop::DelTimerEvent(MTimerEventBase *p_event)
 {
-    if (!cb)
+    if (!p_event)
     {
-        MLOG(MGetLibLogger(), MERR, "callback is invalid");
-        return std::make_pair(before_events_.end(), MError::Invalid);
+        MLOG(MGetLibLogger(), MERR, "event is Invalid");
+        return MError::Invalid;
     }
-    before_events_.push_back(cb);
-    auto it = before_events_.end();
-    return std::make_pair(--it, MError::No);
-}
-
-MError MEventLoop::DelBeforeEvent(const MBeforeEventLocation &location)
-{
-    before_events_.erase(location);
+    if (!p_event->IsActived())
+    {
+        return MError::No;
+    }
+    timer_events_.erase(p_event->GetLocation());
+    p_event->SetActived(false);
     return MError::No;
 }
 
-std::pair<MAfterEventLocation, MError> MEventLoop::AddAfterEvent(const std::function<void ()> &cb)
+MError MEventLoop::AddBeforeEvent(MBeforeEventBase *p_event)
 {
-    if (!cb)
+    if (!p_event)
     {
-        MLOG(MGetLibLogger(), MERR, "callback is invalid");
-        return std::make_pair(after_events_.end(), MError::Invalid);
+        MLOG(MGetLibLogger(), MERR, "event is Invalid");
+        return MError::Invalid;
     }
-    after_events_.push_back(cb);
-    auto it = after_events_.end();
-    return std::make_pair(--it, MError::No);
+    if (p_event->IsActived())
+    {
+        return MError::No;
+    }
+    before_events_.push_back(p_event);
+    p_event->SetActived(true);
+    auto iter = before_events_.end();
+    p_event->SetLocation(--iter);
+    return MError::No;
 }
 
-MError MEventLoop::DelAfterEvent(const MAfterEventLocation &location)
+MError MEventLoop::DelBeforeEvent(MBeforeEventBase *p_event)
 {
-    after_events_.erase(location);
+    if (!p_event)
+    {
+        MLOG(MGetLibLogger(), MERR, "event is Invalid");
+        return MError::Invalid;
+    }
+    if (!p_event->IsActived())
+    {
+        return MError::No;
+    }
+    before_events_.erase(p_event->GetLocation());
+    p_event->SetActived(false);
+    return MError::No;
+}
+
+MError MEventLoop::AddAfterEvent(MAfterEventBase *p_event)
+{
+    if (!p_event)
+    {
+        MLOG(MGetLibLogger(), MERR, "event is Invalid");
+        return MError::Invalid;
+    }
+    if (p_event->IsActived())
+    {
+        return MError::No;
+    }
+    after_events_.push_back(p_event);
+    p_event->SetActived(true);
+    auto iter = after_events_.end();
+    p_event->SetLocation(--iter);
+    return MError::No;
+}
+
+MError MEventLoop::DelAfterEvent(MAfterEventBase *p_event)
+{
+    if (!p_event)
+    {
+        MLOG(MGetLibLogger(), MERR, "event is Invalid");
+        return MError::Invalid;
+    }
+    if (!p_event->IsActived())
+    {
+        return MError::No;
+    }
+    after_events_.erase(p_event->GetLocation());
+    p_event->SetActived(false);
     return MError::No;
 }
 
@@ -223,7 +257,7 @@ MError MEventLoop::Interrupt()
 {
     epoll_event ee;
     ee.events = EPOLLIN | EPOLLERR | EPOLLET;
-    ee.data.fd = interrupter_[0];
+    ee.data.ptr = interrupter_[0];
     if (epoll_ctl(epoll_fd_, EPOLL_CTL_MOD, interrupter_[0], &ee) == -1)
     {
         MLOG(MGetLibLogger(), MERR, "epoll ctl failed errno:", errno);
@@ -232,7 +266,12 @@ MError MEventLoop::Interrupt()
     return MError::No;
 }
 
-MError MEventLoop::DispatchEvents(int timeout)
+MError MEventLoop::DispatchEvent()
+{
+    return MError::No;
+}
+
+MError MEventLoop::DispatchEventOnce(int timeout)
 {
     MError err = DispatchBeforeEvents();
     if (err != MError::No)
