@@ -28,6 +28,7 @@ public:
     MIOEventBase& operator=(const MIOEventBase &) = delete;
 public:
     int GetFD() const;
+    void SetEvents(unsigned events);
     unsigned GetEvents() const;
     void SetActived(bool actived);
     bool IsActived() const;
@@ -36,7 +37,7 @@ public:
     void Clear();
     MError EnableEvent(unsigned events);
     MError DisableEvent(unsigned events);
-    MError DisableEvent();
+    MError DisableAllEvent();
 
     void OnCallback(unsigned events);
 public:

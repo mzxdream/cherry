@@ -27,8 +27,8 @@ public:
     int64_t GetTime() const;
     void UpdateTime();
 
-    MError AddIOEvent(MIOEventBase *p_event);
-    MError DelIOEvent(MIOEventBase *p_event);
+    MError AddIOEvent(unsigned events, MIOEventBase *p_event);
+    MError DelIOEvent(unsigned events, MIOEventBase *p_event);
 
     MError AddTimerEvent(MTimerEventBase *p_event);
     MError DelTimerEvent(MTimerEventBase *p_event);

@@ -4,14 +4,39 @@
 MIOEventBase::MIOEventBase()
     :p_event_loop_(nullptr)
     ,fd_(-1)
-    ,event_(0)
-    ,event_actived_(false)
+    ,events_(0)
+    ,actived_(false)
 {
 }
 
 MIOEventBase::~MIOEventBase()
 {
     Clear();
+}
+
+int MIOEventBase::GetFD() const
+{
+    return fd_;
+}
+
+void MIOEventBase::SetEvents(unsigned events)
+{
+    events_ = events;
+}
+
+unsigned MIOEventBase::GetEvents() const
+{
+    return events_;
+}
+
+void MIOEventBase::SetActived(bool actived)
+{
+    actived_ = actived;
+}
+
+bool MIOEventBase::IsActived() const
+{
+    return actived_;
 }
 
 MError MIOEventBase::Init(MEventLoop *p_event_loop, int fd)
@@ -26,27 +51,29 @@ MError MIOEventBase::Init(MEventLoop *p_event_loop, int fd)
     }
     p_event_loop_ = p_event_loop;
     fd_ = fd;
+    events_ = 0;
+    actived_ = false;
     return MError::No;
 }
 
 void MIOEventBase::Clear()
 {
-    DisableEvent();
+    DisableAllEvent();
 }
 
-MError MIOEventBase::EnableEvent(unsigned event)
+MError MIOEventBase::EnableEvent(unsigned events)
 {
-    return MError::No;
+    return p_event_loop_->AddIOEvent(events, this);
 }
 
-MError MIOEventBase::DisableEvent(unsigned event)
+MError MIOEventBase::DisableEvent(unsigned events)
 {
-    return MError::No;
+    return p_event_loop_->DelIOEvent(events, this);
 }
 
-MError MIOEventBase::DisableEvent()
+MError MIOEventBase::DisableAllEvent()
 {
-    return MError::No;
+    return DisableEvent(MIOEVENT_IN | MIOEVENT_OUT | MIOEVENT_RDHUP);
 }
 
 void MIOEventBase::OnCallback(unsigned event)
