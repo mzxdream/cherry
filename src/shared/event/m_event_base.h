@@ -28,9 +28,7 @@ public:
     MIOEventBase& operator=(const MIOEventBase &) = delete;
 public:
     int GetFD() const;
-    void SetEvents(unsigned events);
     unsigned GetEvents() const;
-    void SetActived(bool actived);
     bool IsActived() const;
 
     MError Init(MEventLoop *p_event_loop, int fd);
@@ -38,9 +36,11 @@ public:
     MError EnableEvent(unsigned events);
     MError DisableEvent(unsigned events);
     MError DisableAllEvent();
-
+private:
+    friend class MEventLoop;
+    void SetEvents(unsigned events);
+    void SetActived(bool actived);
     void OnCallback(unsigned events);
-public:
     virtual void _OnCallback(unsigned events) = 0;
 private:
     MEventLoop *p_event_loop_;
@@ -59,19 +59,19 @@ public:
     MTimerEventBase& operator=(const MTimerEventBase &) = delete;
 public:
     int64_t GetStartTime();
-    void SetActived(bool actived);
     bool IsActived() const;
-    void SetLocation(MTimerEventLocation location);
-    MTimerEventLocation GetLocation() const;
 
     MError Init(MEventLoop *p_event_loop);
     void Clear();
     MError EnableEvent();
     MError DisableEvent();
-
-    void OnCallback();
-public:
+private:
+    friend class MEventLoop;
+    void SetLocation(MTimerEventLocation location);
+    MTimerEventLocation GetLocation() const;
+    void SetActived(bool actived);
     virtual int64_t _GetStartTime() = 0;
+    void OnCallback();
     virtual void _OnCallback() = 0;
 private:
     MEventLoop *p_event_loop_;
@@ -88,18 +88,18 @@ public:
     MBeforeEventBase(const MBeforeEventBase &) = delete;
     MBeforeEventBase& operator=(const MBeforeEventBase &) = delete;
 public:
-    void SetActived(bool actived);
     bool IsActived() const;
-    void SetLocation(MBeforeEventLocation location);
-    MBeforeEventLocation GetLocation() const;
 
     MError Init(MEventLoop *p_event_loop);
     void Clear();
     MError EnableEvent();
     MError DisableEvent();
-
+private:
+    friend class MEventLoop;
+    void SetLocation(MBeforeEventLocation location);
+    MBeforeEventLocation GetLocation() const;
+    void SetActived(bool actived);
     void OnCallback();
-public:
     virtual void _OnCallback() = 0;
 private:
     MEventLoop *p_event_loop_;
@@ -116,18 +116,18 @@ public:
     MAfterEventBase(const MAfterEventBase &) = delete;
     MAfterEventBase& operator=(const MAfterEventBase &) = delete;
 public:
-    void SetActived(bool actived);
     bool IsActived() const;
-    void SetLocation(MAfterEventLocation location);
-    MAfterEventLocation GetLocation() const;
 
-    MError Init();
+    MError Init(MEventLoop *p_event_loop);
     void Clear();
     MError EnableEvent();
     MError DisableEvent();
-
+private:
+    friend class MEventLoop;
+    void SetActived(bool actived);
+    void SetLocation(MAfterEventLocation location);
+    MAfterEventLocation GetLocation() const;
     void OnCallback();
-public:
     virtual void _OnCallback() = 0;
 private:
     MEventLoop *p_event_loop_;
