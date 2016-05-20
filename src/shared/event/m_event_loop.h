@@ -30,7 +30,7 @@ public:
     MError AddIOEvent(unsigned events, MIOEventBase *p_event);
     MError DelIOEvent(unsigned events, MIOEventBase *p_event);
 
-    MError AddTimerEvent(MTimerEventBase *p_event);
+    MError AddTimerEvent(int64_t start_time, MTimerEventBase *p_event);
     MError DelTimerEvent(MTimerEventBase *p_event);
 
     MError AddBeforeEvent(MBeforeEventBase *p_event);

@@ -58,19 +58,17 @@ public:
     MTimerEventBase(const MTimerEventBase &) = delete;
     MTimerEventBase& operator=(const MTimerEventBase &) = delete;
 public:
-    int64_t GetStartTime();
     bool IsActived() const;
 
     MError Init(MEventLoop *p_event_loop);
     void Clear();
-    MError EnableEvent();
+    MError EnableEvent(int64_t start_time);
     MError DisableEvent();
 private:
     friend class MEventLoop;
     void SetLocation(MTimerEventLocation location);
     MTimerEventLocation GetLocation() const;
     void SetActived(bool actived);
-    virtual int64_t _GetStartTime() = 0;
     void OnCallback();
     virtual void _OnCallback() = 0;
 private:

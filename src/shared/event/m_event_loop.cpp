@@ -150,7 +150,7 @@ MError MEventLoop::DelIOEvent(unsigned events, MIOEventBase *p_event)
     return MError::No;
 }
 
-MError MEventLoop::AddTimerEvent(MTimerEventBase *p_event)
+MError MEventLoop::AddTimerEvent(int64_t start_time, MTimerEventBase *p_event)
 {
     if (!p_event)
     {
@@ -161,7 +161,7 @@ MError MEventLoop::AddTimerEvent(MTimerEventBase *p_event)
     {
         return MError::No;
     }
-    auto ret = timer_events_.insert(std::make_pair(p_event->GetStartTime(), p_event));
+    auto ret = timer_events_.insert(std::make_pair(start_time, p_event));
     if (!ret.second)
     {
         MLOG(MGetLibLogger(), MERR, "insert timer event failed");

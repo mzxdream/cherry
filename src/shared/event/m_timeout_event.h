@@ -19,7 +19,6 @@ public:
     MError EnableEvent();
     MError DisableEvent();
 private:
-    virtual int64_t _GetStartTime() override;
     virtual void _OnCallback() override;
 private:
     MEventLoop *p_event_loop_;

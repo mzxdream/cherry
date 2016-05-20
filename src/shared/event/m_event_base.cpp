@@ -92,11 +92,6 @@ MTimerEventBase::~MTimerEventBase()
     Clear();
 }
 
-int64_t MTimerEventBase::GetStartTime()
-{
-    return _GetStartTime();
-}
-
 bool MTimerEventBase::IsActived() const
 {
     return actived_;
@@ -118,9 +113,9 @@ void MTimerEventBase::Clear()
     DisableEvent();
 }
 
-MError MTimerEventBase::EnableEvent()
+MError MTimerEventBase::EnableEvent(int64_t start_time)
 {
-    return p_event_loop_->AddTimerEvent(this);
+    return p_event_loop_->AddTimerEvent(start_time, this);
 }
 
 MError MTimerEventBase::DisableEvent()
