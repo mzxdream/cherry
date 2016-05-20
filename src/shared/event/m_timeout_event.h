@@ -14,9 +14,9 @@ public:
     MTimeoutEvent(const MTimeoutEvent &) = delete;
     MTimeoutEvent& operator=(const MTimeoutEvent &) = delete;
 public:
-    MError Init(MEventLoop *p_event_loop, const std::function<void ()> &cb, int timeout, int repeated = 0);
+    MError Init(MEventLoop *p_event_loop);
     void Clear();
-    MError EnableEvent();
+    MError EnableEvent(const std::function<void ()> &cb, int timeout, int repeated = 0);
     MError DisableEvent();
 private:
     virtual void _OnCallback() override;
