@@ -58,12 +58,12 @@ MError MSocketOpts::Listen(int sock, int backlog)
     return MError::No;
 }
 
-MError MSocketOpts::Accept(int sock, int &accept_sock)
+MError MSocketOpts::Accept(int sock, int &accept_sock, std::string &ip, unsigned &port)
 {
     struct sockaddr_in addr;
     socklen_t len = sizeof(addr);
-    accept_sock = accept(sock_, reinterpret_cast<struct sockaddr*>(&addr), &len);
-    if (fd == -1)
+    accept_sock = accept(sock, reinterpret_cast<struct sockaddr*>(&addr), &len);
+    if (accept_sock == -1)
     {
         if (errno == EINTR)
         {
@@ -73,22 +73,35 @@ MError MSocketOpts::Accept(int sock, int &accept_sock)
         {
             return MError::Again;
         }
-        MLOG(MGetLibLogger(), MERR, "errno is ", errno);
         return MError::Unknown;
     }
-    MError err = sock.Attach(fd);
-    if (err != MError::No)
-    {
-        close(fd);
-        return err;
-    }
-    sock.remote_ip_.resize(64);
-    inet_ntop(AF_INET, &addr.sin_addr.s_addr, &((sock.remote_ip_)[0]), sock.remote_ip_.size());
-    sock.remote_port_ = ntohs(addr.sin_port);
+    ip.resize(64);
+    inet_ntop(AF_INET, &addr.sin_addr.s_addr, &ip[0], ip.size());
+    port = ntohs(addr.sin_port);
     return MError::No;
 }
 
-MError MSocketOpts::Connect(const std::string &ip, unsigned port)
+MError MSocketOpts::Accept(int sock, int &accept_sock)
+{
+    struct sockaddr_in addr;
+    socklen_t len = sizeof(addr);
+    accept_sock = accept(sock, reinterpret_cast<struct sockaddr*>(&addr), &len);
+    if (accept_sock == -1)
+    {
+        if (errno == EINTR)
+        {
+            return MError::InterruptedSysCall;
+        }
+        else if (errno == EAGAIN)
+        {
+            return MError::Again;
+        }
+        return MError::Unknown;
+    }
+    return MError::No;
+}
+
+MError MSocketOpts::Connect(int sock, const std::string &ip, unsigned port)
 {
     struct sockaddr_in addr;
     memset(&addr, 0, sizeof(addr));
@@ -102,27 +115,24 @@ MError MSocketOpts::Connect(const std::string &ip, unsigned port)
         addr.sin_addr.s_addr = inet_addr(ip.c_str());
     }
     addr.sin_port = htons(port);
-    if (connect(sock_, reinterpret_cast<struct sockaddr*>(&addr), sizeof(addr)) == -1)
+    if (connect(sock, reinterpret_cast<struct sockaddr*>(&addr), sizeof(addr)) == -1)
     {
         if (errno == EINPROGRESS)
         {
             return MError::InProgress;
         }
-        MLOG(MGetLibLogger(), MERR, "errno is ", errno);
         return MError::Unknown;
     }
-    remote_ip_ = ip;
-    remote_port_ = port;
     return MError::No;
 }
 
-std::pair<int, MError> MSocketOpts::Send(const char *p_buf, int len)
+std::pair<int, MError> MSocketOpts::Send(int sock, const char *p_buf, int len)
 {
     if (len <= 0)
     {
         return std::make_pair(0, MError::No);
     }
-    int send_len = send(sock_, p_buf, len, 0);
+    int send_len = send(sock, p_buf, len, 0);
     if (send_len == -1)
     {
         if (errno == EINTR)
@@ -133,15 +143,14 @@ std::pair<int, MError> MSocketOpts::Send(const char *p_buf, int len)
         {
             return std::make_pair(0, MError::Again);
         }
-        MLOG(MGetLibLogger(), MERR, "errno is ", errno);
         return std::make_pair(0, MError::Unknown);
     }
     return std::make_pair(send_len, MError::No);
 }
 
-std::pair<int, MError> MSocketOpts::Recv(void *p_buf, int len)
+std::pair<int, MError> MSocketOpts::Recv(int sock, void *p_buf, int len)
 {
-    int recv_len = recv(sock_, p_buf, len, 0);
+    int recv_len = recv(sock, p_buf, len, 0);
     if (recv_len == -1)
     {
         if (errno == EINTR)
@@ -152,21 +161,19 @@ std::pair<int, MError> MSocketOpts::Recv(void *p_buf, int len)
         {
             return std::make_pair(0, MError::Again);
         }
-        MLOG(MGetLibLogger(), MERR, "errno is ", errno);
         return std::make_pair(0, MError::Unknown);
     }
     return std::make_pair(recv_len, MError::No);
 }
 
-MError MSocketOpts::SetBlock(bool block)
+MError MSocketOpts::SetNonBlock(int sock, bool enable)
 {
-    int flag = fcntl(sock_, F_GETFL, 0);
+    int flag = fcntl(sock, F_GETFL, 0);
     if (flag == -1)
     {
-        MLOG(MGetLibLogger(), MERR, "errno is ", errno);
         return MError::Unknown;
     }
-    if (block)
+    if (!enable)
     {
         flag &= ~O_NONBLOCK;
     }
@@ -174,77 +181,30 @@ MError MSocketOpts::SetBlock(bool block)
     {
         flag |= O_NONBLOCK;
     }
-    flag = fcntl(sock_, F_SETFL, flag);
+    flag = fcntl(sock, F_SETFL, flag);
     if (flag == -1)
     {
-        MLOG(MGetLibLogger(), MERR, "errno is ", errno);
         return MError::Unknown;
     }
     return MError::No;
 }
 
-MError MSocketOpts::SetReUseAddr(bool re_use)
+MError MSocketOpts::SetReUseAddr(int sock, bool enable)
 {
-    int reuse = re_use ? 1 : 0;
-    if (setsockopt(sock_, SOL_SOCKET, SO_REUSEADDR, reinterpret_cast<const char*>(&reuse), sizeof(reuse)) < 0)
+    int re_use = enable ? 1 : 0;
+    if (setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, reinterpret_cast<const char*>(&re_use), sizeof(re_use)) < 0)
     {
-        MLOG(MGetLibLogger(), MERR, "errno is ", errno);
         return MError::Unknown;
     }
     return MError::No;
 }
 
-int MSocketOpts::GetHandler() const
+MError MSocketOpts::SetTCPNoDelay(int sock, bool enable)
 {
-    return sock_;
-}
-
-const std::string& MSocketOpts::GetBindIP() const
-{
-    return bind_ip_;
-}
-
-unsigned MSocketOpts::GetBindPort() const
-{
-    return bind_port_;
-}
-
-const std::string& MSocketOpts::GetRemoteIP() const
-{
-    return remote_ip_;
-}
-
-unsigned MSocketOpts::GetRemotePort() const
-{
-    return remote_port_;
-}
-
-MError MSocketOpts::CreateNonblockReuseAddrListener(const std::string &ip, unsigned short port, int backlog)
-{
-    MError err = Create(MSocketFamily::IPV4, MSocketType::TCP, MSocketProtocol::Default);
-    if (err != MError::No)
+    int no_delay = enable ? 1 : 0;
+    if (setsockopt(sock, IPPROTO_TCP, TCP_NODELAY, reinterpret_cast<const char*>(&no_delay), sizeof(no_delay)) < 0)
     {
-        return err;
-    }
-    err = SetBlock(false);
-    if (err != MError::No)
-    {
-        return err;
-    }
-    err = SetReUseAddr(true);
-    if (err != MError::No)
-    {
-        return err;
-    }
-    err = Bind(ip, port);
-    if (err != MError::No)
-    {
-        return err;
-    }
-    err = Listen(backlog);
-    if (err != MError::No)
-    {
-        return err;
+        return MError::Unknown;
     }
     return MError::No;
 }
