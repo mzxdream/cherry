@@ -13,7 +13,7 @@ protected:
     LoginServer& operator=(const LoginServer &) = delete;
     friend class MSingleton<LoginServer>;
 public:
-    bool Init(const std::string &config);
+    bool Init(const std::string &conf);
     void Clear();
 
     bool Update();

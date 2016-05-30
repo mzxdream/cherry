@@ -4,7 +4,7 @@
 #include <string>
 
 static bool stop_flag = false;
-static const std::string config = "./config.json";
+static const std::string conf = "../config";
 
 void OnSignal(int s)
 {
@@ -37,7 +37,7 @@ int main(int argc, char **argv)
 {
     std::cout << "---------begin-------" << std::endl;
     HookSignals();
-    if (!LoginServer::Instance().Init(config))
+    if (!LoginServer::Instance().Init(conf))
     {
         std::cerr << "init failed" << std::endl;
         return 0;
