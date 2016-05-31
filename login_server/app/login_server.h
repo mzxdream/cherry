@@ -18,6 +18,8 @@ public:
 
     bool Update();
 private:
+    bool InitConf(const std::string &conf);
+    void ClearConf();
 };
 
 #endif
