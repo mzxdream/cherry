@@ -1,25 +1,33 @@
 #include <iostream>
 #include <unistd.h>
-#include <mzx/cmd_manager.h>
-#include <mzx/singleton.h>
-
-using CmdManager = mzx::Singleton<mzx::CmdManager>;
+#include <mzx/system/cmd_line.h>
+#include <mzx/system/signal.h>
+#include <signal.h>
 
 int main(int argc, char *argv[])
 {
     int i = 1;
-    CmdManager::Instance().RegistCmd("111111", []() {
-        std::cout << "receive 1" << std::endl;
+    mzx::system::Signal::Hook(SIGINT, [](int i) {
+        printf("sigint %d", i);
+        fflush(stdout);
     });
-    CmdManager::Instance().RegistCmd("222222", [&]() {
-        std::cout << "receive 2" << std::endl;
+    mzx::system::Signal::Hook(SIGTERM, [&](int i) {
+        printf("sigterm %d", i);
+        fflush(stdout);
         i = 0;
     });
-    CmdManager::Instance().Start();
+    mzx::system::CmdLine::Regist("111111", [](const std::string &str) {
+        std::cout << "receive " << str << std::endl;
+    });
+    mzx::system::CmdLine::Regist("222222", [&](const std::string &str) {
+        std::cout << "receive " << str << std::endl;
+        i = 0;
+    });
+    mzx::system::CmdLine::Start();
     while (i != 0)
     {
-        CmdManager::Instance().ExcuteCmd();
+        mzx::system::CmdLine::Excute();
     }
-    CmdManager::Instance().StopAndJoin();
+    mzx::system::CmdLine::Stop();
     return 0;
 }
