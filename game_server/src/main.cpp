@@ -1,18 +1,12 @@
 #include <iostream>
 #include <unistd.h>
-#include <mzx/system/cmd_line.h>
-#include <mzx/system/signal.h>
-#include <signal.h>
 
 int main(int argc, char *argv[])
 {
     int i = 1;
-    mzx::system::Signal::Hook(SIGINT, [](int i) {
-        printf("sigint %d", i);
-        fflush(stdout);
-    });
-    mzx::system::Signal::Hook(SIGTERM, [&](int i) {
-        printf("sigterm %d", i);
+
+    mzx::system::Signal::Hook(SIGTERM, [&](int c) {
+        printf("sigterm %d", c);
         fflush(stdout);
         i = 0;
     });
