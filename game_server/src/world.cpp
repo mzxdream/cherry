@@ -7,7 +7,8 @@
 namespace cherry {
 
 World::World()
-    : system_manager_(entity_manager_, event_manager_)
+    : stop_flag_(false)
+    , system_manager_(entity_manager_, event_manager_)
 {
 }
 
@@ -28,25 +29,32 @@ void HandleCmd(const std::string &cmd)
 
 bool World::Init()
 {
-    mzx::system::Signal::Hook(SIGINT, StopWorld);
-    mzx::system::Signal::Hook(SIGTERM, StopWorld);
+    mzx::system::Signal::Hook(SIGINT, HandleSignal);
+    mzx::system::Signal::Hook(SIGTERM, HandleSignal);
     mzx::system::CmdLine::Regist("addentity", HandleCmd);
     return true;
 }
 
 void World::Uninit()
 {
-    mzx::system::CmdLine::Stop();
+    mzx::system::CmdLine::UnregistAll();
+    mzx::system::Signal::UnhookAll();
+}
+
+void World::Stop()
+{
+    stop_flag_ = true;
 }
 
 void World::Run()
 {
-
     mzx::system::CmdLine::Start();
-    while (true)
+    stop_flag_ = false;
+    while (!stop_flag_)
     {
-
+        mzx::system::CmdLine::Execute();
     }
+    mzx::system::CmdLine::Stop();
 }
 
 }
