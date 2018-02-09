@@ -9,6 +9,7 @@ namespace cherry {
 
 World::World()
     : stop_flag_(false)
+    , cur_time_(0)
     , system_manager_(entity_manager_, event_manager_)
 {
 }
@@ -52,19 +53,24 @@ void World::Run()
 {
     mzx::system::CmdLine::Start();
     stop_flag_ = false;
-    int64_t last_time = mzx::TimeUtil::Now();
+    cur_time_ = mzx::TimeUtil::Now();
     int64_t frame_time = 16;
     while (!stop_flag_)
     {
         mzx::system::CmdLine::Execute();
-        int64_t cost_time = mzx::TimeUtil::Now() - last_time;
+        int64_t cost_time = mzx::TimeUtil::Now() - cur_time_;
         if (cost_time > 0 && cost_time < frame_time)
         {
             mzx::TimeUtil::Sleep(frame_time - cost_time);
         }
-        last_time = mzx::TimeUtil::Now();
+        cur_time_ = mzx::TimeUtil::Now();
     }
     mzx::system::CmdLine::Stop();
+}
+
+int64_t World::CurTime() const
+{
+    return cur_time_;
 }
 
 }

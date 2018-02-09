@@ -22,8 +22,11 @@ public:
     void Uninit();
     void Stop();
     void Run();
+
+    int64_t CurTime() const;
 private:
     bool stop_flag_;
+    int64_t cur_time_;
     mzx::ecs::EntityManager entity_manager_;
     mzx::ecs::EventManager event_manager_;
     mzx::ecs::SystemManager system_manager_;
