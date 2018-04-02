@@ -4,14 +4,12 @@
 #include <mzx/singleton.h>
 #include <mzx/noncopyable.h>
 #include <mzx/ecs/entity_manager.h>
-#include <mzx/ecs/event_manager.h>
-#include <mzx/ecs/system_manager.h>
+#include <mzx/event_manager.h>
 
 namespace cherry {
 
 class World
     : public mzx::Singleton<World>
-    , public mzx::Noncopyable
 {
     friend class mzx::Singleton<World>;
 private:
@@ -27,9 +25,8 @@ public:
 private:
     bool stop_flag_;
     int64_t cur_time_;
-    mzx::ecs::EntityManager entity_manager_;
-    mzx::ecs::EventManager event_manager_;
-    mzx::ecs::SystemManager system_manager_;
+    mzx::EntityManager entity_manager_;
+    mzx::EventManager event_manager_;
 };
 
 }
