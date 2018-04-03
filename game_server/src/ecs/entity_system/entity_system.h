@@ -8,6 +8,8 @@ class World;
 class EntitySystem
 {
 public:
+
+public:
     virtual bool Init(World *world) { return true; }
     virtual void Uninit(World *world) {}
     virtual void Update(World *world, int64_t delta_time) {}
