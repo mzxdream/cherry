@@ -2,8 +2,11 @@
 #define __CHERRY_WORLD_H__
 
 #include <mzx/singleton.h>
-#include "ecs/entity/entity_manager.h"
-#include "ecs/event/event_manager.h"
+#include <mzx/ecs.h>
+#include <mzx/event.h>
+
+#include "ecs/event/event.h"
+#include "ecs/event/event_def.h"
 
 namespace cherry {
 
@@ -24,8 +27,10 @@ public:
 private:
     bool stop_flag_;
     int64_t cur_time_;
-    EntityManager entity_manager_;
-    EventManager event_manager_;
+
+    mzx::EntityManager entity_manager_;
+    mzx::EntitySystemManager system_manager_;
+    mzx::EventManager<EventType, void (World *, const Event *)> event_manager_;
 };
 
 }
