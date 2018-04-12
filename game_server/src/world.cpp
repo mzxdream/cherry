@@ -3,6 +3,8 @@
 #include <mzx/system/signal.h>
 #include <mzx/time_util.h>
 #include <iostream>
+#include "ecs/event/cmd_event.h"
+#include "ecs/entity_system/cmd_handle_system.h"
 
 namespace cherry {
 
@@ -17,7 +19,7 @@ World::~World()
     Uninit();
 }
 
-void HandleSignal(mzx::Signal::Type type)
+void HandleSignal(mzx::SignalType type)
 {
     std::cout << "receive signal:" << type << std::endl;
     World::Instance().Stop();
@@ -25,14 +27,18 @@ void HandleSignal(mzx::Signal::Type type)
 
 void HandleCmd(const std::string &cmd)
 {
-    std::cout << cmd << std::endl;
+    CmdEvent event(cmd);
+    World::Instance().GetEventManager().Invoke(EventType::CMD_EVENT, &event);
 }
 
 bool World::Init()
 {
     mzx::Signal::Hook(SIGINT, HandleSignal);
     mzx::Signal::Hook(SIGTERM, HandleSignal);
-    mzx::CmdLine::Regist("addentity", HandleCmd);
+    mzx::CmdLine::Regist(HandleCmd);
+
+    system_manager_.AddSystem<CmdHandleSystem>(this);
+    system_manager_.InitAllSystem();
     return true;
 }
 
@@ -40,6 +46,7 @@ void World::Uninit()
 {
     mzx::CmdLine::UnregistAll();
     mzx::Signal::UnhookAll();
+    system_manager_.UninitAllSystem();
 }
 
 void World::Stop()
@@ -52,16 +59,23 @@ void World::Run()
     mzx::CmdLine::Start();
     stop_flag_ = false;
     cur_time_ = mzx::TimeUtil::Now();
-    int64_t frame_time = 16;
+    int64_t frame_time = 16 * 1000;
+    int64_t delta_time = 0;
     while (!stop_flag_)
     {
         mzx::CmdLine::Execute();
-        int64_t cost_time = mzx::TimeUtil::Now() - cur_time_;
-        if (cost_time > 0 && cost_time < frame_time)
+        system_manager_.UpdateAllSystem(delta_time);
+        while (!stop_flag_)
         {
-            mzx::TimeUtil::Sleep(frame_time - cost_time);
+            int64_t now_time = mzx::TimeUtil::Now();
+            delta_time = now_time - cur_time_;
+            if (delta_time >= frame_time)
+            {
+                cur_time_ = now_time;
+                break;
+            }
+            mzx::TimeUtil::Sleep(frame_time - delta_time);
         }
-        cur_time_ = mzx::TimeUtil::Now();
     }
     mzx::CmdLine::Stop();
 }
@@ -69,6 +83,11 @@ void World::Run()
 int64_t World::CurTime() const
 {
     return cur_time_;
+}
+
+World::EventManager & World::GetEventManager()
+{
+    return event_manager_;
 }
 
 }

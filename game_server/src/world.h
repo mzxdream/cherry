@@ -14,6 +14,8 @@ class World
     : public mzx::Singleton<World>
 {
     friend class mzx::Singleton<World>;
+public:
+    using EventManager = mzx::EventManager<EventType, void (const Event *)>;
 private:
     World();
     ~World();
@@ -24,13 +26,14 @@ public:
     void Run();
 
     int64_t CurTime() const;
+    EventManager & GetEventManager();
 private:
     bool stop_flag_;
     int64_t cur_time_;
 
     mzx::EntityManager entity_manager_;
     mzx::EntitySystemManager system_manager_;
-    mzx::EventManager<EventType, void (World *, const Event *)> event_manager_;
+    EventManager event_manager_;
 };
 
 }

@@ -2,6 +2,7 @@
 #define __CHERRY_CMD_HANDLE_SYSTEM_H__
 
 #include <mzx/ecs.h>
+#include <mzx/event.h>
 
 namespace cherry {
 
@@ -21,8 +22,9 @@ public:
 public:
     void OnRecvCmd(const Event *event);
 private:
-    std::list<std::string> cmd_list_;
     World *world_;
+    std::list<std::string> cmd_list_;
+    mzx::EventID cmd_event_id_;
 };
 
 }
