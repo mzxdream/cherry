@@ -10,7 +10,6 @@ Scene::Scene(SceneID id, SceneUUID uuid)
 
 Scene::~Scene()
 {
-    Uninit();
 }
 
 SceneID Scene::Id() const

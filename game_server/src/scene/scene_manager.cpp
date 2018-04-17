@@ -10,7 +10,7 @@ SceneManager::SceneManager()
 
 SceneManager::~SceneManager()
 {
-    Uninit();
+
 }
 
 bool SceneManager::Init()
@@ -23,6 +23,7 @@ void SceneManager::Uninit()
     auto iter_scene = scene_list_.begin();
     while (iter_scene != scene_list_.end())
     {
+        iter_scene->second->Uninit();
         delete iter_scene->second;
         iter_scene = scene_list_.erase(iter_scene);
     }
@@ -61,6 +62,7 @@ void SceneManager::DestroyScene(SceneUUID uuid)
     {
         return;
     }
+    iter_scene->second->Uninit();
     delete iter_scene->second;
     scene_list_.erase(iter_scene);
 }

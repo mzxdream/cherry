@@ -22,7 +22,7 @@ public:
     using EventManager = mzx::EventManager<EventType, void (const Event *)>;
 public:
     Scene(SceneID id, SceneUUID uuid);
-    virtual ~Scene();
+    virtual ~Scene() = 0;
     Scene(const Scene &) = delete;
     Scene & operator=(const Scene &) = delete;
 public:
@@ -33,7 +33,7 @@ public:
     bool Init();
     void Uninit();
     void Update(int64_t delta_time);
-
+private:
     virtual bool _Init();
     virtual void _Uninit();
     virtual void _Update(int64_t delta_time);

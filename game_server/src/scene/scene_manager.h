@@ -24,7 +24,8 @@ public:
     T * CreateScene(SceneID id, Args && ...args)
     {
         static_assert(std::is_base_of<Scene, T>::value, "T must be extern Scene");
-        T *scene = new T(std::forward<Args>(args)...);
+        SceneUUID uuid = ++next_scene_uuid_;
+        T *scene = new T(id, uuid, std::forward<Args>(args)...);
         if (scene->Init())
         {
             delete scene;
