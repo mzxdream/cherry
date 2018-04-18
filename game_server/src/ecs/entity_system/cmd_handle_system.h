@@ -15,10 +15,14 @@ class CmdHandleSystem
 public:
     CmdHandleSystem(World *world);
     virtual ~CmdHandleSystem();
-public:
-    virtual bool Init() override;
-    virtual void Uninit() override;
-    virtual void Update(int64_t delta_time) override;
+    CmdHandleSystem(const CmdHandleSystem &) = delete;
+    CmdHandleSystem & operator=(const CmdHandleSystem &) = delete;
+private:
+    virtual bool _Init() override;
+    virtual void _Uninit() override;
+    virtual void _Update(int64_t delta_time) override;
+    virtual bool _Configure() override;
+    virtual void _Unconfigure() override;
 public:
     void OnRecvCmd(const Event *event);
 private:

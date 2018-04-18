@@ -8,17 +8,6 @@
 
 namespace cherry {
 
-World::World()
-    : stop_flag_(false)
-    , cur_time_(0)
-{
-}
-
-World::~World()
-{
-    Uninit();
-}
-
 void HandleSignal(mzx::SignalType type)
 {
     std::cout << "receive signal:" << type << std::endl;
@@ -31,6 +20,16 @@ void HandleCmd(const std::string &cmd)
     World::Instance().GetEventManager().Invoke(EventType::CMD_EVENT, &event);
 }
 
+World::World()
+    : stop_flag_(false)
+    , cur_time_(0)
+{
+}
+
+World::~World()
+{
+}
+
 bool World::Init()
 {
     mzx::Signal::Hook(SIGINT, HandleSignal);
@@ -38,15 +37,15 @@ bool World::Init()
     mzx::CmdLine::Regist(HandleCmd);
 
     system_manager_.AddSystem<CmdHandleSystem>(this);
-    system_manager_.InitAllSystem();
+    system_manager_.Configure();
     return true;
 }
 
 void World::Uninit()
 {
+    system_manager_.Unconfigure();
     mzx::CmdLine::UnregistAll();
     mzx::Signal::UnhookAll();
-    system_manager_.UninitAllSystem();
 }
 
 void World::Stop()
@@ -64,7 +63,7 @@ void World::Run()
     while (!stop_flag_)
     {
         mzx::CmdLine::Execute();
-        system_manager_.UpdateAllSystem(delta_time);
+        system_manager_.Update(delta_time);
         while (!stop_flag_)
         {
             int64_t now_time = mzx::TimeUtil::Now();

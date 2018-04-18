@@ -13,12 +13,14 @@ namespace cherry {
 class World
     : public mzx::Singleton<World>
 {
-    friend class mzx::Singleton<World>;
 public:
+    friend class mzx::Singleton<World>;
     using EventManager = mzx::EventManager<EventType, void (const Event *)>;
 private:
     World();
     ~World();
+    World(const World &) = delete;
+    World & operator=(const World &) = delete;
 public:
     bool Init();
     void Uninit();

@@ -18,18 +18,28 @@ CmdHandleSystem::~CmdHandleSystem()
 
 }
 
-bool CmdHandleSystem::Init()
+bool CmdHandleSystem::_Init()
 {
     cmd_event_id_ = world_->GetEventManager().AddListener(EventType::CMD_EVENT, std::bind(&CmdHandleSystem::OnRecvCmd, this, std::placeholders::_1));
     return true;
 }
 
-void CmdHandleSystem::Uninit()
+void CmdHandleSystem::_Uninit()
 {
     world_->GetEventManager().RemoveListener(EventType::CMD_EVENT, cmd_event_id_);
 }
 
-void CmdHandleSystem::Update(int64_t delta_time)
+bool CmdHandleSystem::_Configure()
+{
+    return true;
+}
+
+void CmdHandleSystem::_Unconfigure()
+{
+
+}
+
+void CmdHandleSystem::_Update(int64_t delta_time)
 {
     if (cmd_list_.empty())
     {

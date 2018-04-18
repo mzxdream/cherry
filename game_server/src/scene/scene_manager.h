@@ -16,8 +16,6 @@ public:
     SceneManager(const SceneManager &) = delete;
     SceneManager & operator=(const SceneManager &) = delete;
 public:
-    bool Init();
-    void Uninit();
     void Update(int64_t delta_time);
 
     template <typename T, typename ...Args>

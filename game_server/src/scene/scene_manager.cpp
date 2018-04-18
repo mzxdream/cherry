@@ -10,16 +10,6 @@ SceneManager::SceneManager()
 
 SceneManager::~SceneManager()
 {
-
-}
-
-bool SceneManager::Init()
-{
-    return true;
-}
-
-void SceneManager::Uninit()
-{
     auto iter_scene = scene_list_.begin();
     while (iter_scene != scene_list_.end())
     {
