@@ -7,6 +7,7 @@
 
 #include "ecs/event/event.h"
 #include "ecs/event/event_def.h"
+#include "scene/scene_manager.h"
 
 namespace cherry {
 
@@ -22,20 +23,20 @@ private:
     World(const World &) = delete;
     World & operator=(const World &) = delete;
 public:
+    EventManager & GetEventManager();
+
     bool Init();
     void Uninit();
     void Stop();
     void Run();
 
     int64_t CurTime() const;
-    EventManager & GetEventManager();
 private:
     bool stop_flag_;
     int64_t cur_time_;
 
-    mzx::EntityManager entity_manager_;
-    mzx::EntitySystemManager system_manager_;
     EventManager event_manager_;
+    SceneManager scene_manager_;
 };
 
 }

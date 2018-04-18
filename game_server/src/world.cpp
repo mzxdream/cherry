@@ -16,18 +16,31 @@ void HandleSignal(mzx::SignalType type)
 
 void HandleCmd(const std::string &cmd)
 {
-    CmdEvent event(cmd);
-    World::Instance().GetEventManager().Invoke(EventType::CMD_EVENT, &event);
+    if (cmd == "addscene")
+    {
+
+    }
+    else if (cmd == "addentity")
+    {
+
+    }
 }
 
 World::World()
     : stop_flag_(false)
     , cur_time_(0)
 {
+
 }
 
 World::~World()
 {
+
+}
+
+World::EventManager & World::GetEventManager()
+{
+    return event_manager_;
 }
 
 bool World::Init()
@@ -35,15 +48,11 @@ bool World::Init()
     mzx::Signal::Hook(SIGINT, HandleSignal);
     mzx::Signal::Hook(SIGTERM, HandleSignal);
     mzx::CmdLine::Regist(HandleCmd);
-
-    system_manager_.AddSystem<CmdHandleSystem>(this);
-    system_manager_.Configure();
     return true;
 }
 
 void World::Uninit()
 {
-    system_manager_.Unconfigure();
     mzx::CmdLine::UnregistAll();
     mzx::Signal::UnhookAll();
 }
@@ -63,7 +72,7 @@ void World::Run()
     while (!stop_flag_)
     {
         mzx::CmdLine::Execute();
-        system_manager_.Update(delta_time);
+        scene_manager_.Update(delta_time);
         while (!stop_flag_)
         {
             int64_t now_time = mzx::TimeUtil::Now();
@@ -82,11 +91,6 @@ void World::Run()
 int64_t World::CurTime() const
 {
     return cur_time_;
-}
-
-World::EventManager & World::GetEventManager()
-{
-    return event_manager_;
 }
 
 }

@@ -27,6 +27,11 @@ Scene::EventManager & Scene::GetEventManager()
     return event_manager_;
 }
 
+mzx::EntityManager & Scene::GetEntityManager()
+{
+    return entity_manager_;
+}
+
 bool Scene::Init()
 {
     return _Init();
