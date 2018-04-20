@@ -30,6 +30,7 @@ public:
     SceneUUID Uuid() const;
     EventManager & GetEventManager();
     mzx::EntityManager & GetEntityManager();
+    mzx::EntitySystemManager & GetSystemManager();
 
     bool Init();
     void Uninit();

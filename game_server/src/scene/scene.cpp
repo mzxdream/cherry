@@ -32,6 +32,11 @@ mzx::EntityManager & Scene::GetEntityManager()
     return entity_manager_;
 }
 
+mzx::EntitySystemManager & Scene::GetSystemManager()
+{
+    return system_manager_;
+}
+
 bool Scene::Init()
 {
     return _Init();
