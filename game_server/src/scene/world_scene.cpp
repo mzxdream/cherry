@@ -16,18 +16,18 @@ WorldScene::~WorldScene()
 bool WorldScene::_Init()
 {
     //system_manager_.AddSystem<CmdHandleSystem>(this);
-    system_manager_.Configure();
+    GetSystemManager().Configure();
     return true;
 }
 
 void WorldScene::_Uninit()
 {
-    system_manager_.Unconfigure();
+    GetSystemManager().Unconfigure();
 }
 
 void WorldScene::_Update(int64_t delta_time)
 {
-    system_manager_.Update(delta_time);
+    GetSystemManager().Update(delta_time);
 }
 
 }

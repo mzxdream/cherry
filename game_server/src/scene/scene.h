@@ -28,6 +28,8 @@ public:
 public:
     SceneID Id() const;
     SceneUUID Uuid() const;
+    void SetNeedDestroy(bool need_destroy = true);
+    bool IsNeedDestroy() const;
     EventManager & GetEventManager();
     mzx::EntityManager & GetEntityManager();
     mzx::EntitySystemManager & GetSystemManager();
@@ -39,10 +41,10 @@ private:
     virtual bool _Init();
     virtual void _Uninit();
     virtual void _Update(int64_t delta_time);
-protected:
+private:
     SceneID id_;
     SceneUUID uuid_;
-
+    bool need_destroy_;
     EventManager event_manager_;
     mzx::EntityManager entity_manager_;
     mzx::EntitySystemManager system_manager_;

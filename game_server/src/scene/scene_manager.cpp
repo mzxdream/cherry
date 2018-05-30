@@ -10,29 +10,13 @@ SceneManager::SceneManager()
 
 SceneManager::~SceneManager()
 {
-    auto iter_scene = scene_list_.begin();
-    while (iter_scene != scene_list_.end())
-    {
-        iter_scene->second->Uninit();
-        delete iter_scene->second;
-        iter_scene = scene_list_.erase(iter_scene);
-    }
-    scene_destroy_list_.clear();
-    next_scene_uuid_ = 0;
-}
-
-void SceneManager::Update(int64_t delta_time)
-{
     for (auto &iter_scene : scene_list_)
     {
-        iter_scene.second->Update(delta_time);
+        iter_scene.second->Uninit();
+        delete iter_scene.second;
     }
-    auto iter_destroy_scene = scene_destroy_list_.begin();
-    while (iter_destroy_scene != scene_destroy_list_.end())
-    {
-        DestroyScene(*iter_destroy_scene);
-        iter_destroy_scene = scene_destroy_list_.erase(iter_destroy_scene);
-    }
+    scene_list_.clear();
+    next_scene_uuid_ = 0;
 }
 
 Scene * SceneManager::GetScene(SceneUUID uuid)
@@ -52,14 +36,7 @@ void SceneManager::DestroyScene(SceneUUID uuid)
     {
         return;
     }
-    iter_scene->second->Uninit();
-    delete iter_scene->second;
-    scene_list_.erase(iter_scene);
-}
-
-void SceneManager::DelayDestroyScene(SceneUUID uuid)
-{
-    scene_destroy_list_.insert(uuid);
+    iter_scene->second->SetNeedDestroy();
 }
 
 void SceneManager::ForeachScene(std::function<bool (Scene *)> cb)
@@ -73,6 +50,25 @@ void SceneManager::ForeachScene(std::function<bool (Scene *)> cb)
         if (!cb(iter_scene.second))
         {
             break;
+        }
+    }
+}
+
+void SceneManager::Update(int64_t delta_time)
+{
+    auto iter_scene = scene_list_.begin();
+    while (iter_scene != scene_list_.end())
+    {
+        if (iter_scene->second->IsNeedDestroy())
+        {
+            iter_scene->second->Uninit();
+            delete iter_scene->second;
+            iter_scene = scene_list_.erase(iter_scene);
+        }
+        else
+        {
+            iter_scene->second->Update(delta_time);
+            ++iter_scene;
         }
     }
 }

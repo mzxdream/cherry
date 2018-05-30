@@ -5,6 +5,7 @@ namespace cherry {
 Scene::Scene(SceneID id, SceneUUID uuid)
     : id_(id)
     , uuid_(uuid)
+    , need_destroy_(false)
 {
 }
 
@@ -20,6 +21,16 @@ SceneID Scene::Id() const
 SceneUUID Scene::Uuid() const
 {
     return uuid_;
+}
+
+void Scene::SetNeedDestroy(bool need_destroy)
+{
+    need_destroy_ = need_destroy;
+}
+
+bool Scene::IsNeedDestroy() const
+{
+    return need_destroy_;
 }
 
 Scene::EventManager & Scene::GetEventManager()
