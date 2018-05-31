@@ -36,6 +36,18 @@ void SceneManager::DestroyScene(SceneUUID uuid)
     {
         return;
     }
+    iter_scene->second->Uninit();
+    delete iter_scene->second;
+    scene_list_.erase(iter_scene);
+}
+
+void SceneManager::DelayDestroyScene(SceneUUID uuid)
+{
+    auto iter_scene = scene_list_.find(uuid);
+    if (iter_scene == scene_list_.end())
+    {
+        return;
+    }
     iter_scene->second->SetNeedDestroy();
 }
 

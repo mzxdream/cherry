@@ -31,6 +31,7 @@ public:
     }
     Scene * GetScene(SceneUUID uuid);
     void DestroyScene(SceneUUID uuid);
+    void DelayDestroyScene(SceneUUID uuid);
     void ForeachScene(std::function<bool (Scene *)> cb);
     void Update(int64_t delta_time);
 private:
