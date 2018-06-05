@@ -13,14 +13,14 @@ class SpawnSystem
     : public mzx::EntitySystem<SpawnSystem>
 {
 public:
-    SpawnSystem(Scene *scene);
+    explicit SpawnSystem(Scene *scene);
     virtual ~SpawnSystem();
     SpawnSystem(const SpawnSystem &) = delete;
     SpawnSystem & operator=(const SpawnSystem &) = delete;
 private:
     virtual bool _Init() override;
     virtual void _Uninit() override;
-    virtual void _Update(int64_t delta_time) override;
+    virtual void _Update(int64_t now_time) override;
     virtual bool _Configure() override;
     virtual void _Unconfigure() override;
 private:
