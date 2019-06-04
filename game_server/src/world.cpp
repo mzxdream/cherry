@@ -1,12 +1,14 @@
-#include "world.h"
+#include <iostream>
 #include <mzx/system/cmd_line.h>
 #include <mzx/system/signal.h>
 #include <mzx/time_util.h>
-#include <iostream>
-#include "ecs/event/cmd_event.h"
-#include "ecs/entity_system/cmd_handle_system.h"
 
-namespace cherry {
+#include "ecs/entity_system/cmd_handle_system.h"
+#include "ecs/event/cmd_event.h"
+#include "world.h"
+
+namespace cherry
+{
 
 void HandleSignal(mzx::SignalType type)
 {
@@ -14,31 +16,17 @@ void HandleSignal(mzx::SignalType type)
     World::Instance().Stop();
 }
 
-void HandleCmd(const std::string &cmd)
-{
-    if (cmd == "addscene")
-    {
-
-    }
-    else if (cmd == "addentity")
-    {
-
-    }
-}
-
 World::World()
     : stop_flag_(false)
     , cur_time_(0)
 {
-
 }
 
 World::~World()
 {
-
 }
 
-World::EventManager & World::GetEventManager()
+World::EventManager &World::GetEventManager()
 {
     return event_manager_;
 }
@@ -93,4 +81,4 @@ int64_t World::CurTime() const
     return cur_time_;
 }
 
-}
+} // namespace cherry
