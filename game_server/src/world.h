@@ -26,6 +26,7 @@ private:
 
 public:
     EventManager &GetEventManager();
+    SceneManager &GetSceneManager();
 
     bool Init();
     void Uninit();
@@ -35,11 +36,9 @@ public:
     int64_t CurTime() const;
 
 private:
-    bool stop_flag_;
-    int64_t cur_time_;
-
-    EventManager event_manager_;
     SceneManager scene_manager_;
+    EventManager event_manager_;
+    volatile bool stop_flag_{false};
 };
 
 } // namespace cherry
