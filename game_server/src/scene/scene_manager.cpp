@@ -66,7 +66,7 @@ void SceneManager::ForeachScene(std::function<bool(Scene *)> cb)
     }
 }
 
-void SceneManager::Update(int64_t cur_time)
+void SceneManager::Update()
 {
     auto iter_scene = scene_list_.begin();
     while (iter_scene != scene_list_.end())
@@ -79,7 +79,7 @@ void SceneManager::Update(int64_t cur_time)
         }
         else
         {
-            iter_scene->second->Update(cur_time);
+            iter_scene->second->Update();
             ++iter_scene;
         }
     }

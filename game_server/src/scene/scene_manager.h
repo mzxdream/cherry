@@ -36,7 +36,7 @@ public:
     void DestroyScene(SceneUUID uuid);
     void DelayDestroyScene(SceneUUID uuid);
     void ForeachScene(std::function<bool(Scene *)> cb);
-    void Update(int64_t cur_time);
+    void Update();
 
 private:
     std::map<SceneUUID, Scene *> scene_list_;

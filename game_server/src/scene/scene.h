@@ -35,12 +35,12 @@ public:
 
     bool Init();
     void Uninit();
-    void Update(int64_t cur_time);
+    void Update();
 
 private:
     virtual bool _Init();
     virtual void _Uninit();
-    virtual void _Update(int64_t cur_time);
+    virtual void _Update();
 
 private:
     SceneUUID uuid_{SCENE_UUID_INVALID};

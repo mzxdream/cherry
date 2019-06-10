@@ -53,9 +53,9 @@ void Scene::Uninit()
     _Uninit();
 }
 
-void Scene::Update(int64_t cur_time)
+void Scene::Update()
 {
-    _Update(cur_time);
+    _Update();
 }
 
 bool Scene::_Init()
@@ -67,7 +67,7 @@ void Scene::_Uninit()
 {
 }
 
-void Scene::_Update(int64_t cur_time)
+void Scene::_Update()
 {
 }
 
