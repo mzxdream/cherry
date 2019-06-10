@@ -3,9 +3,9 @@
 #include <mzx/system/cmd_line.h>
 #include <mzx/system/signal.h>
 
-#include "ecs/entity_system/cmd_handle_system.h"
-#include "ecs/event/cmd_event.h"
-#include "world.h"
+#include <ecs/entity_system/cmd_handle_system.h>
+#include <ecs/event/cmd_event.h>
+#include <world.h>
 
 namespace cherry
 {

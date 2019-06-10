@@ -5,8 +5,8 @@
 #include <mzx/ecs.h>
 #include <mzx/event.h>
 
-#include "ecs/event/event.h"
-#include "ecs/event/event_def.h"
+#include <ecs/event/event.h>
+#include <ecs/event/event_def.h>
 
 namespace cherry
 {

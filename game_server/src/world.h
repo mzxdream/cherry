@@ -5,9 +5,9 @@
 #include <mzx/event.h>
 #include <mzx/singleton.h>
 
-#include "ecs/event/event.h"
-#include "ecs/event/event_def.h"
-#include "scene/scene_manager.h"
+#include <ecs/event/event.h>
+#include <ecs/event/event_def.h>
+#include <scene/scene_manager.h>
 
 namespace cherry
 {
