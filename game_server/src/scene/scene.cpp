@@ -3,9 +3,8 @@
 namespace cherry
 {
 
-Scene::Scene(SceneID id, SceneUUID uuid)
-    : id_(id)
-    , uuid_(uuid)
+Scene::Scene(SceneUUID uuid)
+    : uuid_(uuid)
     , need_destroy_(false)
 {
 }
@@ -14,12 +13,7 @@ Scene::~Scene()
 {
 }
 
-SceneID Scene::Id() const
-{
-    return id_;
-}
-
-SceneUUID Scene::Uuid() const
+SceneUUID Scene::UUID() const
 {
     return uuid_;
 }

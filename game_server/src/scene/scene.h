@@ -11,9 +11,6 @@
 namespace cherry
 {
 
-using SceneID = int64_t;
-constexpr SceneID SCENE_ID_INVALID = (SceneID)-1;
-
 using SceneUUID = int64_t;
 constexpr SceneUUID SCENE_UUID_INVALID = (SceneUUID)-1;
 
@@ -23,14 +20,13 @@ public:
     using EventManager = mzx::EventManager<EventType, void(const Event *)>;
 
 public:
-    Scene(SceneID id, SceneUUID uuid);
+    Scene(SceneUUID uuid);
     virtual ~Scene() = 0;
     Scene(const Scene &) = delete;
     Scene &operator=(const Scene &) = delete;
 
 public:
-    SceneID Id() const;
-    SceneUUID Uuid() const;
+    SceneUUID UUID() const;
     void SetNeedDestroy(bool need_destroy = true);
     bool IsNeedDestroy() const;
     EventManager &GetEventManager();
@@ -47,7 +43,6 @@ private:
     virtual void _Update(int64_t cur_time);
 
 private:
-    SceneID id_{SCENE_ID_INVALID};
     SceneUUID uuid_{SCENE_UUID_INVALID};
     bool need_destroy_{false};
     EventManager event_manager_;

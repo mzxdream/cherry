@@ -10,7 +10,7 @@
 namespace cherry
 {
 
-class SceneManager
+class SceneManager final
 {
 public:
     SceneManager();

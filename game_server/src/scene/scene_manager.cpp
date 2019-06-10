@@ -1,11 +1,11 @@
 #include "scene/scene_manager.h"
 
-namespace cherry {
+namespace cherry
+{
 
 SceneManager::SceneManager()
     : next_scene_uuid_(0)
 {
-
 }
 
 SceneManager::~SceneManager()
@@ -19,7 +19,7 @@ SceneManager::~SceneManager()
     next_scene_uuid_ = 0;
 }
 
-Scene * SceneManager::GetScene(SceneUUID uuid)
+Scene *SceneManager::GetScene(SceneUUID uuid)
 {
     auto iter_scene = scene_list_.find(uuid);
     if (iter_scene == scene_list_.end())
@@ -51,7 +51,7 @@ void SceneManager::DelayDestroyScene(SceneUUID uuid)
     iter_scene->second->SetNeedDestroy();
 }
 
-void SceneManager::ForeachScene(std::function<bool (Scene *)> cb)
+void SceneManager::ForeachScene(std::function<bool(Scene *)> cb)
 {
     if (!cb)
     {
@@ -85,4 +85,4 @@ void SceneManager::Update(int64_t delta_time)
     }
 }
 
-}
+} // namespace cherry
