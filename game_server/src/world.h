@@ -38,6 +38,7 @@ public:
 private:
     SceneManager scene_manager_;
     EventManager event_manager_;
+    int64_t cur_time_{0};
     volatile bool stop_flag_{false};
 };
 

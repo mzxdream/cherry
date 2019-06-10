@@ -41,6 +41,8 @@ bool World::Init()
     mzx::Signal::Hook(mzx::SignalType::Interrupt, HandleSignal);
     mzx::Signal::Hook(mzx::SignalType::Terminal, HandleSignal);
     mzx::CmdLine::Regist(HandleCmd);
+    cur_time_ = mzx::DateTime::NowMilliseconds();
+    stop_flag_ = false;
     return true;
 }
 
@@ -58,15 +60,13 @@ void World::Stop()
 void World::Run()
 {
     mzx::CmdLine::Start();
-    stop_flag_ = false;
-    cur_time_ = mzx::DateTime::NowMilliseconds();
     while (!stop_flag_)
     {
         auto next_time = mzx::DateTime::NowMilliseconds();
         while (!stop_flag_ && cur_time_ + FRAME_TIME <= next_time)
         {
             cur_time_ += FRAME_TIME;
-            scene_manager_.Update(cur_time_);
+            scene_manager_.Update();
             mzx::CmdLine::Execute();
         }
         if (!stop_flag_)
