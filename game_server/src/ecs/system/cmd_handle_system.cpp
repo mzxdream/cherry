@@ -1,32 +1,34 @@
 #include "ecs/entity_system/cmd_handle_system.h"
-#include "ecs/event/event_def.h"
 #include "ecs/event/cmd_event.h"
+#include "ecs/event/event_def.h"
 #include "world.h"
 #include <iostream>
 
-namespace cherry {
+namespace cherry
+{
 
 CmdHandleSystem::CmdHandleSystem(World *world)
     : world_(world)
     , cmd_event_id_(mzx::EVENT_ID_INVALID)
 {
-
 }
 
 CmdHandleSystem::~CmdHandleSystem()
 {
-
 }
 
 bool CmdHandleSystem::_Init()
 {
-    cmd_event_id_ = world_->GetEventManager().AddListener(EventType::CMD_EVENT, std::bind(&CmdHandleSystem::OnRecvCmd, this, std::placeholders::_1));
+    cmd_event_id_ = world_->GetEventManager().AddListener(
+        EventType::CMD_EVENT,
+        std::bind(&CmdHandleSystem::OnRecvCmd, this, std::placeholders::_1));
     return true;
 }
 
 void CmdHandleSystem::_Uninit()
 {
-    world_->GetEventManager().RemoveListener(EventType::CMD_EVENT, cmd_event_id_);
+    world_->GetEventManager().RemoveListener(EventType::CMD_EVENT,
+                                             cmd_event_id_);
 }
 
 bool CmdHandleSystem::_Configure()
@@ -36,7 +38,6 @@ bool CmdHandleSystem::_Configure()
 
 void CmdHandleSystem::_Unconfigure()
 {
-
 }
 
 void CmdHandleSystem::_Update(int64_t delta_time)
@@ -59,5 +60,5 @@ void CmdHandleSystem::OnRecvCmd(const Event *event)
     cmd_list_.push_back(cmd_event->GetCmd());
 }
 
-}
+} // namespace cherry
 
