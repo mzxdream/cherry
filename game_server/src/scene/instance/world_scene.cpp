@@ -1,33 +1,28 @@
-#include "scene/world_scene.h"
+#include <scene/instance/world_scene.h>
 
-namespace cherry {
-
-WorldScene::WorldScene(SceneID id, SceneUUID uuid)
-    : Scene(id, uuid)
+namespace cherry
 {
 
+WorldScene::WorldScene(SceneUUID uuid)
+    : Scene(uuid)
+{
 }
 
 WorldScene::~WorldScene()
 {
-
 }
 
 bool WorldScene::_Init()
 {
-    //system_manager_.AddSystem<CmdHandleSystem>(this);
-    GetSystemManager().Configure();
     return true;
 }
 
 void WorldScene::_Uninit()
 {
-    GetSystemManager().Unconfigure();
 }
 
-void WorldScene::_Update(int64_t delta_time)
+void WorldScene::_Update()
 {
-    GetSystemManager().Update(delta_time);
 }
 
-}
+} // namespace cherry
