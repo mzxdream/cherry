@@ -1,28 +1,21 @@
 #ifndef __CHERRY_CMD_EVENT_H__
 #define __CHERRY_CMD_EVENT_H__
 
+#include <mzx/simple_event.h>
 #include <string>
-#include "ecs/event/event.h"
 
-namespace cherry {
-
-class CmdEvent
-    : public Event
+namespace cherry
 {
-public:
-    CmdEvent(const std::string &cmd)
-        : cmd_(cmd)
+
+struct CmdEvent : public mzx::SimpleEvent<CmdEvent>
+{
+    explicit CmdEvent(const std::string &command)
+        : cmd(command)
     {
     }
-public:
-    const std::string & GetCmd() const
-    {
-        return cmd_;
-    }
-private:
-    std::string cmd_;
+    std::string cmd;
 };
 
-}
+} // namespace cherry
 
 #endif

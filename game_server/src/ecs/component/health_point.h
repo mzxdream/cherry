@@ -3,7 +3,8 @@
 
 #include <cstdint>
 
-namespace cherry {
+namespace cherry
+{
 
 struct HealthPoint
 {
@@ -14,6 +15,6 @@ struct HealthPoint
     int64_t hp;
 };
 
-}
+} // namespace cherry
 
 #endif

@@ -3,10 +3,7 @@
 
 #include <cstdint>
 #include <mzx/ecs.h>
-#include <mzx/event.h>
-
-#include <ecs/event/event.h>
-#include <ecs/event/event_def.h>
+#include <mzx/simple_event.h>
 
 namespace cherry
 {
@@ -17,7 +14,7 @@ constexpr SceneUUID SCENE_UUID_INVALID = (SceneUUID)-1;
 class Scene
 {
 public:
-    using EventManager = mzx::EventManager<EventType, void(const Event *)>;
+    using EventManager = mzx::SimpleEventManager;
 
 public:
     Scene(SceneUUID uuid);

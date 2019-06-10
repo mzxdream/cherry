@@ -2,11 +2,9 @@
 #define __CHERRY_WORLD_H__
 
 #include <mzx/ecs.h>
-#include <mzx/event.h>
+#include <mzx/simple_event.h>
 #include <mzx/singleton.h>
 
-#include <ecs/event/event.h>
-#include <ecs/event/event_def.h>
 #include <scene/scene_manager.h>
 
 namespace cherry
@@ -16,7 +14,7 @@ class World : public mzx::Singleton<World>
 {
 public:
     friend class mzx::Singleton<World>;
-    using EventManager = mzx::EventManager<EventType, void(const Event *)>;
+    using EventManager = mzx::SimpleEventManager;
 
 private:
     World();

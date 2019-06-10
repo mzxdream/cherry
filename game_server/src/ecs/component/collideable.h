@@ -3,18 +3,18 @@
 
 #include <cstdint>
 
-namespace cherry {
+namespace cherry
+{
 
 struct Collideable
 {
     explicit Collideable(double r = 0)
         : radius(r)
     {
-
     }
     double radius;
 };
 
-}
+} // namespace cherry
 
 #endif

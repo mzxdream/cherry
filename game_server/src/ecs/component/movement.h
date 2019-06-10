@@ -13,13 +13,11 @@ struct Movement
         : direction(dir)
         , velocity(v)
     {
-
     }
     mzx::Vector3<double> direction;
     double velocity;
 };
 
-}
-
+} // namespace cherry
 
 #endif

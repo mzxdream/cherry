@@ -3,11 +3,13 @@
 
 #include <mzx/vector3.h>
 
-namespace cherry {
+namespace cherry
+{
 
 struct Location
 {
-    explicit Location(const mzx::Vector3<double> &d, const mzx::Vector3<double> &p)
+    explicit Location(const mzx::Vector3<double> &d,
+                      const mzx::Vector3<double> &p)
         : direction(d)
         , position(p)
     {
@@ -16,6 +18,6 @@ struct Location
     mzx::Vector3<double> position;
 };
 
-}
+} // namespace cherry
 
 #endif
