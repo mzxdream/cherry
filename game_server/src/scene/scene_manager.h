@@ -20,14 +20,13 @@ public:
 
 public:
     template <typename T, typename... Args>
-    T *CreateScene(SceneID id, Args &&... args)
+    T *CreateScene(Args &&... args)
     {
         static_assert(std::is_base_of<Scene, T>::value,
                       "T must be extern Scene");
-        T *scene = new T(id, ++next_scene_uuid_, std::forward<Args>(args)...);
+        auto *scene = new T(++next_scene_uuid_, std::forward<Args>(args)...);
         if (!scene->Init())
         {
-            scene->Uninit();
             delete scene;
             return nullptr;
         }
@@ -37,7 +36,7 @@ public:
     void DestroyScene(SceneUUID uuid);
     void DelayDestroyScene(SceneUUID uuid);
     void ForeachScene(std::function<bool(Scene *)> cb);
-    void Update(int64_t delta_time);
+    void Update(int64_t cur_time);
 
 private:
     std::map<SceneUUID, Scene *> scene_list_;
