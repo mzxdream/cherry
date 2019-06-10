@@ -1,6 +1,7 @@
 #include "scene/scene.h"
 
-namespace cherry {
+namespace cherry
+{
 
 Scene::Scene(SceneID id, SceneUUID uuid)
     : id_(id)
@@ -33,17 +34,17 @@ bool Scene::IsNeedDestroy() const
     return need_destroy_;
 }
 
-Scene::EventManager & Scene::GetEventManager()
+Scene::EventManager &Scene::GetEventManager()
 {
     return event_manager_;
 }
 
-mzx::EntityManager & Scene::GetEntityManager()
+mzx::EntityManager &Scene::GetEntityManager()
 {
     return entity_manager_;
 }
 
-mzx::EntitySystemManager & Scene::GetSystemManager()
+mzx::EntitySystemManager &Scene::GetSystemManager()
 {
     return system_manager_;
 }
@@ -58,9 +59,9 @@ void Scene::Uninit()
     _Uninit();
 }
 
-void Scene::Update(int64_t delta_time)
+void Scene::Update(int64_t cur_time)
 {
-    _Update(delta_time);
+    _Update(cur_time);
 }
 
 bool Scene::_Init()
@@ -70,12 +71,10 @@ bool Scene::_Init()
 
 void Scene::_Uninit()
 {
-
 }
 
-void Scene::_Update(int64_t delta_time)
+void Scene::_Update(int64_t cur_time)
 {
-
 }
 
-}
+} // namespace cherry

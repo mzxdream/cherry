@@ -10,15 +10,20 @@
 namespace cherry
 {
 
-void HandleSignal(mzx::SignalType type)
+constexpr static int64_t FRAME_TIME = 33 * 100; // TODO
+
+static void HandleSignal(mzx::SignalType type)
 {
     std::cout << "receive signal:" << type << std::endl;
     World::Instance().Stop();
 }
 
+static void HandleCmd(const std::string &cmd)
+{
+    std::cout << "cmd:" << cmd << " handle not found" << std::endl;
+}
+
 World::World()
-    : stop_flag_(false)
-    , cur_time_(0)
 {
 }
 
@@ -33,8 +38,8 @@ World::EventManager &World::GetEventManager()
 
 bool World::Init()
 {
-    mzx::Signal::Hook(SIGINT, HandleSignal);
-    mzx::Signal::Hook(SIGTERM, HandleSignal);
+    mzx::Signal::Hook(mzx::SignalType::Interrupt, HandleSignal);
+    mzx::Signal::Hook(mzx::SignalType::Terminal, HandleSignal);
     mzx::CmdLine::Regist(HandleCmd);
     return true;
 }
@@ -54,23 +59,19 @@ void World::Run()
 {
     mzx::CmdLine::Start();
     stop_flag_ = false;
-    cur_time_ = mzx::TimeUtil::Now();
-    int64_t frame_time = 16 * 1000;
-    int64_t delta_time = 0;
+    cur_time_ = mzx::DateTime::NowMilliseconds();
     while (!stop_flag_)
     {
-        mzx::CmdLine::Execute();
-        scene_manager_.Update(delta_time);
-        while (!stop_flag_)
+        auto next_time = mzx::DateTime::NowMilliseconds();
+        while (!stop_flag_ && cur_time_ + FRAME_TIME <= next_time)
         {
-            int64_t now_time = mzx::TimeUtil::Now();
-            delta_time = now_time - cur_time_;
-            if (delta_time >= frame_time)
-            {
-                cur_time_ = now_time;
-                break;
-            }
-            mzx::TimeUtil::Sleep(frame_time - delta_time);
+            cur_time_ += FRAME_TIME;
+            scene_manager_.Update(cur_time_);
+            mzx::CmdLine::Execute();
+        }
+        if (!stop_flag_)
+        {
+            mzx::Thread::Sleep(cur_time_ + FRAME_TIME - next_time);
         }
     }
     mzx::CmdLine::Stop();
