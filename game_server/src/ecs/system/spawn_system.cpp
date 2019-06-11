@@ -1,16 +1,14 @@
-#include "ecs/entity_system/spawn_system.h"
+#include <ecs/entity_system/spawn_system.h>
 
-namespace cherry {
-
-SpawnSystem::SpawnSystem(Scene *scene)
-    : scene_(scene)
+namespace cherry
 {
 
+SpawnSystem::SpawnSystem()
+{
 }
 
 SpawnSystem::~SpawnSystem()
 {
-
 }
 
 bool SpawnSystem::_Init()
@@ -20,27 +18,10 @@ bool SpawnSystem::_Init()
 
 void SpawnSystem::_Uninit()
 {
-
 }
 
-void SpawnSystem::_Update(int64_t now_time)
+void SpawnSystem::_Update(Scene *scene)
 {
-    if (!scene_)
-    {
-        return;
-    }
-    auto &entity_manager = scene_->GetEntityManager();
-
 }
 
-bool SpawnSystem::_Configure()
-{
-    return true;
-}
-
-void SpawnSystem::_Unconfigure()
-{
-
-}
-
-}
+} // namespace cherry
