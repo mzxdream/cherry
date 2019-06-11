@@ -3,8 +3,7 @@
 #include <mzx/system/cmd_line.h>
 #include <mzx/system/signal.h>
 
-#include <ecs/entity_system/cmd_handle_system.h>
-#include <ecs/event/cmd_event.h>
+#include <cmd/cmd_handler.h>
 #include <world.h>
 
 namespace cherry
@@ -16,11 +15,6 @@ static void HandleSignal(mzx::SignalType type)
 {
     std::cout << "receive signal:" << type << std::endl;
     World::Instance().Stop();
-}
-
-static void HandleCmd(const std::string &cmd)
-{
-    std::cout << "cmd:" << cmd << " handle not found" << std::endl;
 }
 
 World::World()
@@ -40,7 +34,7 @@ bool World::Init()
 {
     mzx::Signal::Hook(mzx::SignalType::Interrupt, HandleSignal);
     mzx::Signal::Hook(mzx::SignalType::Terminal, HandleSignal);
-    mzx::CmdLine::Regist(HandleCmd);
+    CmdHandler::Regist();
     cur_time_ = mzx::DateTime::NowMilliseconds();
     stop_flag_ = false;
     return true;

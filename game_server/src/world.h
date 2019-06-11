@@ -12,8 +12,9 @@ namespace cherry
 
 class World : public mzx::Singleton<World>
 {
+    friend mzx::Singleton<World>;
+
 public:
-    friend class mzx::Singleton<World>;
     using EventManager = mzx::SimpleEventManager;
 
 private:
