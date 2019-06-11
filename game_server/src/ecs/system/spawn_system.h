@@ -8,7 +8,7 @@ namespace cherry
 
 class Scene;
 
-class SpawnSystem : public mzx::EntitySystem<SpawnSystem>
+class SpawnSystem : public mzx::EntitySystem<SpawnSystem, void(Scene *)>
 {
 public:
     SpawnSystem();
@@ -17,11 +17,7 @@ public:
     SpawnSystem &operator=(const SpawnSystem &) = delete;
 
 private:
-    virtual bool _Init() override;
-    virtual void _Uninit() override;
-
-public:
-    void Update(Scene *scene);
+    void _Update(Scene *scene);
 };
 
 } // namespace cherry

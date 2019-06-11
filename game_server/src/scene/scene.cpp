@@ -33,12 +33,12 @@ Scene::EventManager &Scene::GetEventManager()
     return event_manager_;
 }
 
-mzx::EntityManager &Scene::GetEntityManager()
+Scene::EntityManager &Scene::GetEntityManager()
 {
     return entity_manager_;
 }
 
-mzx::EntitySystemManager &Scene::GetSystemManager()
+Scene::EntitySystemManager &Scene::GetSystemManager()
 {
     return system_manager_;
 }

@@ -15,6 +15,8 @@ class Scene
 {
 public:
     using EventManager = mzx::SimpleEventManager;
+    using EntityManager = mzx::EntityManager;
+    using EntitySystemManager = mzx::EntitySystemManager<void(Scene *)>;
 
 public:
     Scene(SceneUUID uuid);
@@ -27,8 +29,8 @@ public:
     void SetNeedDestroy(bool need_destroy = true);
     bool IsNeedDestroy() const;
     EventManager &GetEventManager();
-    mzx::EntityManager &GetEntityManager();
-    mzx::EntitySystemManager &GetSystemManager();
+    EntityManager &GetEntityManager();
+    EntitySystemManager &GetSystemManager();
 
     bool Init();
     void Uninit();
