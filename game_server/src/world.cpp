@@ -2,6 +2,7 @@
 #include <mzx/date_time.h>
 #include <mzx/system/cmd_line.h>
 #include <mzx/system/signal.h>
+#include <mzx/thread.h>
 
 #include <cmd/cmd_handler.h>
 #include <world.h>

@@ -45,8 +45,8 @@ private:
     SceneUUID uuid_{SCENE_UUID_INVALID};
     bool need_destroy_{false};
     EventManager event_manager_;
-    mzx::EntityManager entity_manager_;
-    mzx::EntitySystemManager system_manager_;
+    EntityManager entity_manager_;
+    EntitySystemManager system_manager_;
 };
 
 } // namespace cherry

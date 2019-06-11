@@ -1,3 +1,4 @@
+#include <iostream>
 #include <mzx/system/cmd_line.h>
 
 #include <cmd/cmd_handler.h>

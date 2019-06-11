@@ -11,12 +11,13 @@ SET(CMAKE_CXX_FLAGS_RELEASE "-O2")
 SET(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin)
 
 INCLUDE_DIRECTORIES(
-    ${PROJECT_SOURCE_DIR}/../third_party/mzx/include
     ${PROJECT_SOURCE_DIR}/src
+    ${PROJECT_SOURCE_DIR}/../third_party/mzx/include
 )
 
 LINK_DIRECTORIES(
     ${PROJECT_SOURCE_DIR}/../lib
+    ${PROJECT_SOURCE_DIR}/../third_party/mzx/lib
 )
 
 LINK_LIBRARIES(
