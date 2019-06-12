@@ -29,5 +29,4 @@
 
 # director
 */build/*
-./game_server/include/mzx
-./game_server/lib/libmzx.so
+*/bin/*
