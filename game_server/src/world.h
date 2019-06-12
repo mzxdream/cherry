@@ -24,8 +24,8 @@ private:
     World &operator=(const World &) = delete;
 
 public:
-    EventManager &GetEventManager();
     SceneManager &GetSceneManager();
+    EventManager &GetEventManager();
 
     bool Init();
     void Uninit();

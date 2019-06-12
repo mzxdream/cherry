@@ -26,6 +26,11 @@ World::~World()
 {
 }
 
+SceneManager &World::GetSceneManager()
+{
+    return scene_manager_;
+}
+
 World::EventManager &World::GetEventManager()
 {
     return event_manager_;
