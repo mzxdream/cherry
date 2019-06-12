@@ -18,6 +18,11 @@ static void HandleCmd(const std::vector<std::string> &cmd)
     std::cout << "cmd:" << cmd[0] << " handle not found" << std::endl;
 }
 
+static void HandleExit(const std::vector<std::string> &cmd)
+{
+    World::Instance().Stop();
+}
+
 static void HandleCreateWorldScene(const std::vector<std::string> &cmd)
 {
     auto &scene_manager = World::Instance().GetSceneManager();
@@ -46,6 +51,7 @@ static void HandleDestroyScene(const std::vector<std::string> &cmd)
 void CmdHandler::Regist()
 {
     mzx::CmdLine::Regist(HandleCmd);
+    mzx::CmdLine::Regist("exit", HandleExit);
     mzx::CmdLine::Regist("createworldscene", HandleCreateWorldScene);
     mzx::CmdLine::Regist("destroyscene", HandleDestroyScene);
 }
