@@ -19,6 +19,11 @@ SceneManager::~SceneManager()
     next_scene_uuid_ = 0;
 }
 
+std::size_t SceneManager::SceneCount() const
+{
+    return scene_list_.size();
+}
+
 Scene *SceneManager::GetScene(SceneUUID uuid)
 {
     auto iter_scene = scene_list_.find(uuid);

@@ -19,6 +19,8 @@ public:
     SceneManager &operator=(const SceneManager &) = delete;
 
 public:
+    std::size_t SceneCount() const;
+
     template <typename T, typename... Args>
     T *CreateScene(Args &&... args)
     {
@@ -30,6 +32,7 @@ public:
             delete scene;
             return nullptr;
         }
+        scene_list_.emplace(scene->UUID(), scene);
         return scene;
     }
     Scene *GetScene(SceneUUID uuid);
