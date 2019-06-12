@@ -10,7 +10,7 @@
 namespace cherry
 {
 
-constexpr static int64_t FRAME_TIME = 33 * 100; // TODO
+constexpr static int64_t FRAME_TIME = 33; // TODO
 
 static void HandleSignal(mzx::SignalType type)
 {

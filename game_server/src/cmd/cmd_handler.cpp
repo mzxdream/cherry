@@ -3,6 +3,7 @@
 #include <mzx/system/cmd_line.h>
 
 #include <cmd/cmd_handler.h>
+#include <ecs/component/health_point.h>
 #include <scene/instance/world_scene.h>
 #include <world.h>
 
@@ -157,6 +158,35 @@ static void HandleSelectEntity(const std::vector<std::string> &cmd)
     std::cout << "select entity:" << id << " success" << std::endl;
 }
 
+static void HandleAddComponent(const std::vector<std::string> &cmd)
+{
+    if (cmd.size() < 2)
+    {
+        std::cout << "add component cmd size < 2" << std::endl;
+        return;
+    }
+    auto &scene_manager = World::Instance().GetSceneManager();
+    auto *scene = scene_manager.GetScene(select_scene_uuid);
+    if (!scene)
+    {
+        std::cout << "scene:" << select_scene_uuid << " not exist" << std::endl;
+        return;
+    }
+    auto *entity = scene->GetEntityManager().GetEntity(select_entity_id);
+    if (!entity)
+    {
+        std::cout << "entity:" << select_entity_id << " not exist" << std::endl;
+        return;
+    }
+    mzx::Component<HealthPoint> test(1000);
+    if (!entity->AddComponent(&test))
+    {
+        std::cout << "add component " << cmd[1] << " failed" << std::endl;
+        return;
+    }
+    std::cout << "add component " << cmd[1] << " success" << std::endl;
+}
+
 void CmdHandler::Regist()
 {
     mzx::CmdLine::Regist(HandleCmd);
@@ -171,6 +201,8 @@ void CmdHandler::Regist()
     mzx::CmdLine::Regist("removeentiy", HandleRemoveEntity);
     mzx::CmdLine::Regist("listentity", HandleListEntity);
     mzx::CmdLine::Regist("selectentity", HandleSelectEntity);
+
+    mzx::CmdLine::Regist("addcomponent", HandleAddComponent);
 }
 
 } // namespace cherry
