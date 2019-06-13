@@ -2,6 +2,7 @@
 #define __CHERRY_HEALTH_POINT_H__
 
 #include <cstdint>
+#include <mzx/convert.h>
 
 #include <ecs/helper/component_serialize.h>
 
@@ -25,12 +26,16 @@ static bool SerializeHealthPoint(const mzx::ComponentBase *base,
     {
         return false;
     }
+    *data = mzx::UnsafeConvertTo<std::string>(
+        static_cast<const mzx::Component<HealthPoint> *>(base)->Get()->hp);
     return true;
 }
 
 static mzx::ComponentBase *UnserializeHealthPoint(const std::string &data)
 {
-    return nullptr;
+    auto *component =
+        new mzx::Component<HealthPoint>(mzx::UnsafeConvertTo<int64_t>(data));
+    return component;
 }
 
 CHERRY_COMPONENT_SERIALIZE_REGIST(HealthPoint, SerializeHealthPoint,

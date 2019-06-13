@@ -179,7 +179,7 @@ static void HandleAddComponent(const std::vector<std::string> &cmd)
         return;
     }
     std::string data;
-    if (cmd.size() > 3)
+    if (cmd.size() >= 3)
     {
         data = cmd[2];
     }
@@ -199,6 +199,40 @@ static void HandleAddComponent(const std::vector<std::string> &cmd)
     std::cout << "add component " << cmd[1] << " success" << std::endl;
 }
 
+static void HandlePrintEntity(const std::vector<std::string> &cmd)
+{
+    auto &scene_manager = World::Instance().GetSceneManager();
+    auto *scene = scene_manager.GetScene(select_scene_uuid);
+    if (!scene)
+    {
+        std::cout << "scene:" << select_scene_uuid << " not exist" << std::endl;
+        return;
+    }
+    auto *entity = scene->GetEntityManager().GetEntity(select_entity_id);
+    if (!entity)
+    {
+        std::cout << "entity:" << select_entity_id << " not exist" << std::endl;
+        return;
+    }
+    std::cout << "entity:" << entity->ID() << std::endl;
+    entity->ForeachComponent([](mzx::ComponentBase *base) {
+        std::cout << "->index:" << base->ClassIndex();
+        std::string data;
+        const char *name =
+            ComponentSerializeFactory::Instance().Serialize(base, &data);
+        if (name)
+        {
+            std::cout << " name:" << name << " data:" << data;
+        }
+        else
+        {
+            std::cout << " name: ? data: ?";
+        }
+        std::cout << std::endl;
+        return true;
+    });
+}
+
 void CmdHandler::Regist()
 {
     mzx::CmdLine::Regist(HandleCmd);
@@ -213,6 +247,7 @@ void CmdHandler::Regist()
     mzx::CmdLine::Regist("removeentiy", HandleRemoveEntity);
     mzx::CmdLine::Regist("listentity", HandleListEntity);
     mzx::CmdLine::Regist("selectentity", HandleSelectEntity);
+    mzx::CmdLine::Regist("printentity", HandlePrintEntity);
 
     mzx::CmdLine::Regist("addcomponent", HandleAddComponent);
 }
