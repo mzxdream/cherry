@@ -178,12 +178,24 @@ static void HandleAddComponent(const std::vector<std::string> &cmd)
         std::cout << "entity:" << select_entity_id << " not exist" << std::endl;
         return;
     }
-    mzx::Component<HealthPoint> test(1000);
-    if (!entity->AddComponent(&test))
+    std::string data;
+    if (cmd.size() > 3)
+    {
+        data = cmd[2];
+    }
+    auto *component =
+        ComponentSerializeFactory::Instance().Unserialize(cmd[1].c_str(), data);
+    if (!component)
+    {
+        std::cout << "create component " << cmd[1] << " failed" << std::endl;
+        return;
+    }
+    if (!entity->AddComponent(component))
     {
         std::cout << "add component " << cmd[1] << " failed" << std::endl;
         return;
     }
+    delete component;
     std::cout << "add component " << cmd[1] << " success" << std::endl;
 }
 

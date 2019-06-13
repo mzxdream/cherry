@@ -3,6 +3,8 @@
 
 #include <cstdint>
 
+#include <ecs/helper/component_serialize.h>
+
 namespace cherry
 {
 
@@ -12,8 +14,27 @@ struct HealthPoint
         : hp(h)
     {
     }
+
     int64_t hp;
 };
+
+static bool SerializeHealthPoint(const mzx::ComponentBase *base,
+                                 std::string *data)
+{
+    if (!base || !data)
+    {
+        return false;
+    }
+    return true;
+}
+
+static mzx::ComponentBase *UnserializeHealthPoint(const std::string &data)
+{
+    return nullptr;
+}
+
+CHERRY_COMPONENT_SERIALIZE_REGIST(HealthPoint, SerializeHealthPoint,
+                                  UnserializeHealthPoint);
 
 } // namespace cherry
 
