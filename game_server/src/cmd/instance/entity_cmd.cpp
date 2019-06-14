@@ -2,7 +2,7 @@
 #include <mzx/convert.h>
 
 #include <cmd/cmd_handler.h>
-#include <ecs/helper/component_serialize.h>
+#include <ecs/component/serialize/component_serialize.h>
 #include <scene/scene.h>
 
 namespace cherry

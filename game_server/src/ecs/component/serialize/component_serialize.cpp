@@ -1,4 +1,4 @@
-#include <ecs/helper/component_serialize.h>
+#include <ecs/component/serialize/component_serialize.h>
 
 namespace cherry
 {

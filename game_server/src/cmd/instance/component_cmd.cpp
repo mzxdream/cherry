@@ -1,8 +1,8 @@
 #include <iostream>
 #include <mzx/convert.h>
-#include <ecs/helper/component_serialize.h>
 
 #include <cmd/cmd_handler.h>
+#include <ecs/component/serialize/component_serialize.h>
 #include <scene/scene.h>
 #include <world.h>
 
