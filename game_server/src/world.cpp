@@ -1,9 +1,9 @@
 #include <iostream>
 #include <mzx/date_time.h>
-#include <mzx/system/cmd_line.h>
 #include <mzx/system/signal.h>
 #include <mzx/thread.h>
 
+#include <cmd/cmd_handler.h>
 #include <world.h>
 
 namespace cherry
@@ -46,7 +46,6 @@ bool World::Init()
 
 void World::Uninit()
 {
-    mzx::CmdLine::UnregistAll();
     mzx::Signal::UnhookAll();
 }
 
@@ -57,7 +56,7 @@ void World::Stop()
 
 void World::Run()
 {
-    mzx::CmdLine::Start();
+    CmdHandler::Instance().Start();
     while (!stop_flag_)
     {
         auto next_time = mzx::DateTime::NowMilliseconds();
@@ -72,7 +71,7 @@ void World::Run()
             mzx::Thread::Sleep(cur_time_ + FRAME_TIME - next_time);
         }
     }
-    mzx::CmdLine::Stop();
+    CmdHandler::Instance().Stop();
 }
 
 int64_t World::CurTime() const

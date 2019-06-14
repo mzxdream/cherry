@@ -1,19 +1,14 @@
 #include <iostream>
 #include <mzx/convert.h>
 
-#include <cmd/instance/cmd_scene.h>
 #include <scene/instance/world_scene.h>
 #include <world.h>
+#include <cmd/cmd_handler.h>
 
 namespace cherry
 {
 
-CHERRY_CMD_REGIST(createworldscene, HandleCreateWorldScene);
-CHERRY_CMD_REGIST(destroyscene, HandleDestroyScene);
-CHERRY_CMD_REGIST(listscene, HandleListScene);
-CHERRY_CMD_REGIST(selectscene, HandleSelectScene);
-
-void HandleCreateWorldScene(const std::vector<std::string> &cmd)
+static void HandleCreateWorldScene(const std::vector<std::string> &cmd)
 {
     auto &scene_manager = World::Instance().GetSceneManager();
     auto *scene = scene_manager.CreateScene<WorldScene>();
@@ -25,8 +20,9 @@ void HandleCreateWorldScene(const std::vector<std::string> &cmd)
     std::cout << "create world scene:" << scene->UUID() << " success"
               << std::endl;
 }
+CHERRY_CMD_REGIST(createworldscene, HandleCreateWorldScene);
 
-void HandleDestroyScene(const std::vector<std::string> &cmd)
+static void HandleDestroyScene(const std::vector<std::string> &cmd)
 {
     if (cmd.size() < 2)
     {
@@ -37,8 +33,9 @@ void HandleDestroyScene(const std::vector<std::string> &cmd)
     scene_manager.DestroyScene(mzx::UnsafeConvertTo<SceneUUID>(cmd[1]));
     std::cout << "destroy scene success" << std::endl;
 }
+CHERRY_CMD_REGIST(destroyscene, HandleDestroyScene);
 
-void HandleListScene(const std::vector<std::string> &cmd)
+static void HandleListScene(const std::vector<std::string> &cmd)
 {
     auto &scene_manager = World::Instance().GetSceneManager();
     std::cout << "scene total count:" << scene_manager.SceneCount()
@@ -48,9 +45,9 @@ void HandleListScene(const std::vector<std::string> &cmd)
         return true;
     });
 }
+CHERRY_CMD_REGIST(listscene, HandleListScene);
 
-static SceneUUID g_select_scene_uuid = 0;
-void HandleSelectScene(const std::vector<std::string> &cmd)
+static void HandleSelectScene(const std::vector<std::string> &cmd)
 {
     if (cmd.size() < 2)
     {
@@ -64,19 +61,9 @@ void HandleSelectScene(const std::vector<std::string> &cmd)
         std::cout << "scene:" << uuid << " not exist" << std::endl;
         return;
     }
-    g_select_scene_uuid = uuid;
+    CmdHandler::Instance().SetSelectSceneUUID(uuid);
     std::cout << "select scene:" << uuid << " success" << std::endl;
 }
-
-Scene *GetSelectScene()
-{
-    auto &scene_manager = World::Instance().GetSceneManager();
-    auto *scene = scene_manager.GetScene(g_select_scene_uuid);
-    if (!scene)
-    {
-        return nullptr;
-    }
-    return scene;
-}
+CHERRY_CMD_REGIST(selectscene, HandleSelectScene);
 
 } // namespace cherry

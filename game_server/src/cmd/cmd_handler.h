@@ -3,6 +3,7 @@
 
 #include <mzx/singleton.h>
 #include <mzx/system/cmd_line.h>
+#include <scene/scene.h>
 
 namespace cherry
 {
@@ -13,10 +14,18 @@ class CmdHandler : public mzx::Singleton<CmdHandler>
 
 private:
     CmdHandler();
+    ~CmdHandler();
 
 public:
+    Scene *GetSelectScene();
+    void SetSelectSceneUUID(SceneUUID uuid);
+    bool Start();
+    void Stop();
     bool Regist(const char *name,
                 std::function<void(const std::vector<std::string> &)> cb);
+
+private:
+    SceneUUID select_scene_uuid_{SCENE_UUID_INVALID};
 };
 
 #define CHERRY_CMD_REGIST(name, callback)                                      \

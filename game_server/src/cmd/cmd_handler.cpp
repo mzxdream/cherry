@@ -28,6 +28,31 @@ CmdHandler::CmdHandler()
     mzx::CmdLine::Regist("exit", HandleExit);
 }
 
+CmdHandler::~CmdHandler()
+{
+    mzx::CmdLine::UnregistAll();
+}
+
+Scene *CmdHandler::GetSelectScene()
+{
+    return World::Instance().GetSceneManager().GetScene(select_scene_uuid_);
+}
+
+void CmdHandler::SetSelectSceneUUID(SceneUUID uuid)
+{
+    select_scene_uuid_ = uuid;
+}
+
+bool CmdHandler::Start()
+{
+    return mzx::CmdLine::Start();
+}
+
+void CmdHandler::Stop()
+{
+    mzx::CmdLine::Stop();
+}
+
 bool CmdHandler::Regist(
     const char *name, std::function<void(const std::vector<std::string> &)> cb)
 {
