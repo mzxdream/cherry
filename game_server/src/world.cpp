@@ -4,7 +4,6 @@
 #include <mzx/system/signal.h>
 #include <mzx/thread.h>
 
-#include <cmd/cmd_handler.h>
 #include <world.h>
 
 namespace cherry
@@ -40,7 +39,6 @@ bool World::Init()
 {
     mzx::Signal::Hook(mzx::SignalType::Interrupt, HandleSignal);
     mzx::Signal::Hook(mzx::SignalType::Terminal, HandleSignal);
-    CmdHandler::Regist();
     cur_time_ = mzx::DateTime::NowMilliseconds();
     stop_flag_ = false;
     return true;

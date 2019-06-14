@@ -3,20 +3,18 @@
 #include <mzx/system/cmd_line.h>
 
 #include <cmd/cmd_handler.h>
-#include <ecs/component/health_point.h>
-#include <scene/instance/world_scene.h>
 #include <world.h>
 
 namespace cherry
 {
 
-static void HandleCmd(const std::vector<std::string> &cmd)
+static void HandleDefaultCmd(const std::vector<std::string> &cmd)
 {
     if (cmd.empty())
     {
         return;
     }
-    std::cout << "cmd:" << cmd[0] << " handle not found" << std::endl;
+    std::cout << cmd[0] << " handle not found" << std::endl;
 }
 
 static void HandleExit(const std::vector<std::string> &cmd)
@@ -24,232 +22,21 @@ static void HandleExit(const std::vector<std::string> &cmd)
     World::Instance().Stop();
 }
 
-static void HandleCreateWorldScene(const std::vector<std::string> &cmd)
+CmdHandler::CmdHandler()
 {
-    auto &scene_manager = World::Instance().GetSceneManager();
-    auto *scene = scene_manager.CreateScene<WorldScene>();
-    if (!scene)
-    {
-        std::cout << "create world scene failed" << std::endl;
-        return;
-    }
-    std::cout << "create world scene:" << scene->UUID() << " success"
-              << std::endl;
-}
-
-static void HandleDestroyScene(const std::vector<std::string> &cmd)
-{
-    if (cmd.size() < 2)
-    {
-        std::cout << "destroy scene cmd size < 2" << std::endl;
-        return;
-    }
-    auto &scene_manager = World::Instance().GetSceneManager();
-    scene_manager.DestroyScene(mzx::UnsafeConvertTo<SceneUUID>(cmd[1]));
-    std::cout << "destroy scene success" << std::endl;
-}
-
-static void HandleListScene(const std::vector<std::string> &cmd)
-{
-    auto &scene_manager = World::Instance().GetSceneManager();
-    std::cout << "scene total count:" << scene_manager.SceneCount()
-              << std::endl;
-    scene_manager.ForeachScene([](Scene *scene) {
-        std::cout << "->scene uuid:" << scene->UUID() << std::endl;
-        return true;
-    });
-}
-
-static SceneUUID select_scene_uuid = 0;
-static void HandleSelectScene(const std::vector<std::string> &cmd)
-{
-    if (cmd.size() < 2)
-    {
-        std::cout << "select scene cmd size < 2" << std::endl;
-        return;
-    }
-    auto uuid = mzx::UnsafeConvertTo<SceneUUID>(cmd[1]);
-    auto &scene_manager = World::Instance().GetSceneManager();
-    if (!scene_manager.GetScene(uuid))
-    {
-        std::cout << "scene:" << uuid << " not exist" << std::endl;
-        return;
-    }
-    select_scene_uuid = uuid;
-    std::cout << "select scene:" << uuid << " success" << std::endl;
-}
-
-static void HandleAddEntity(const std::vector<std::string> &cmd)
-{
-    auto &scene_manager = World::Instance().GetSceneManager();
-    auto *scene = scene_manager.GetScene(select_scene_uuid);
-    if (!scene)
-    {
-        std::cout << "scene:" << select_scene_uuid << " not exist" << std::endl;
-        return;
-    }
-    auto *entity = scene->GetEntityManager().AddEntity();
-    if (!entity)
-    {
-        std::cout << "add entity failed" << std::endl;
-        return;
-    }
-    std::cout << "add entity:" << entity->ID() << std::endl;
-}
-
-static void HandleRemoveEntity(const std::vector<std::string> &cmd)
-{
-    if (cmd.size() < 2)
-    {
-        std::cout << "remove entity cmd size < 2" << std::endl;
-        return;
-    }
-    auto &scene_manager = World::Instance().GetSceneManager();
-    auto *scene = scene_manager.GetScene(select_scene_uuid);
-    if (!scene)
-    {
-        std::cout << "scene:" << select_scene_uuid << " not exist" << std::endl;
-        return;
-    }
-    auto uuid = mzx::UnsafeConvertTo<mzx::EntityID>(cmd[1]);
-    scene->GetEntityManager().RemoveEntity(uuid);
-    std::cout << "remove entity:" << uuid << " success" << std::endl;
-}
-
-static void HandleListEntity(const std::vector<std::string> &cmd)
-{
-    auto &scene_manager = World::Instance().GetSceneManager();
-    auto *scene = scene_manager.GetScene(select_scene_uuid);
-    if (!scene)
-    {
-        std::cout << "scene:" << select_scene_uuid << " not exist" << std::endl;
-        return;
-    }
-    std::cout << "entity total count:"
-              << scene->GetEntityManager().EntityCount() << std::endl;
-    scene->GetEntityManager().ForeachEntity([](const mzx::Entity *entity) {
-        std::cout << "->entity:" << entity->ID() << std::endl;
-        return true;
-    });
-}
-
-static mzx::EntityID select_entity_id = 0;
-static void HandleSelectEntity(const std::vector<std::string> &cmd)
-{
-    if (cmd.size() < 2)
-    {
-        std::cout << "select entity cmd size < 2" << std::endl;
-        return;
-    }
-    auto &scene_manager = World::Instance().GetSceneManager();
-    auto *scene = scene_manager.GetScene(select_scene_uuid);
-    if (!scene)
-    {
-        std::cout << "scene:" << select_scene_uuid << " not exist" << std::endl;
-        return;
-    }
-    auto id = mzx::UnsafeConvertTo<mzx::EntityID>(cmd[1]);
-    if (!scene->GetEntityManager().GetEntity(id))
-    {
-        std::cout << "entity:" << id << " not exist" << std::endl;
-        return;
-    }
-    select_entity_id = id;
-    std::cout << "select entity:" << id << " success" << std::endl;
-}
-
-static void HandleAddComponent(const std::vector<std::string> &cmd)
-{
-    if (cmd.size() < 2)
-    {
-        std::cout << "add component cmd size < 2" << std::endl;
-        return;
-    }
-    auto &scene_manager = World::Instance().GetSceneManager();
-    auto *scene = scene_manager.GetScene(select_scene_uuid);
-    if (!scene)
-    {
-        std::cout << "scene:" << select_scene_uuid << " not exist" << std::endl;
-        return;
-    }
-    auto *entity = scene->GetEntityManager().GetEntity(select_entity_id);
-    if (!entity)
-    {
-        std::cout << "entity:" << select_entity_id << " not exist" << std::endl;
-        return;
-    }
-    std::string data;
-    if (cmd.size() >= 3)
-    {
-        data = cmd[2];
-    }
-    auto *component =
-        ComponentSerializeFactory::Instance().Unserialize(cmd[1].c_str(), data);
-    if (!component)
-    {
-        std::cout << "create component " << cmd[1] << " failed" << std::endl;
-        return;
-    }
-    if (!entity->AddComponent(component))
-    {
-        std::cout << "add component " << cmd[1] << " failed" << std::endl;
-        return;
-    }
-    delete component;
-    std::cout << "add component " << cmd[1] << " success" << std::endl;
-}
-
-static void HandlePrintEntity(const std::vector<std::string> &cmd)
-{
-    auto &scene_manager = World::Instance().GetSceneManager();
-    auto *scene = scene_manager.GetScene(select_scene_uuid);
-    if (!scene)
-    {
-        std::cout << "scene:" << select_scene_uuid << " not exist" << std::endl;
-        return;
-    }
-    auto *entity = scene->GetEntityManager().GetEntity(select_entity_id);
-    if (!entity)
-    {
-        std::cout << "entity:" << select_entity_id << " not exist" << std::endl;
-        return;
-    }
-    std::cout << "entity:" << entity->ID() << std::endl;
-    entity->ForeachComponent([](mzx::ComponentBase *base) {
-        std::cout << "->index:" << base->ClassIndex();
-        std::string data;
-        const char *name =
-            ComponentSerializeFactory::Instance().Serialize(base, &data);
-        if (name)
-        {
-            std::cout << " name:" << name << " data:" << data;
-        }
-        else
-        {
-            std::cout << " name: ? data: ?";
-        }
-        std::cout << std::endl;
-        return true;
-    });
-}
-
-void CmdHandler::Regist()
-{
-    mzx::CmdLine::Regist(HandleCmd);
+    mzx::CmdLine::Regist(HandleDefaultCmd);
     mzx::CmdLine::Regist("exit", HandleExit);
+}
 
-    mzx::CmdLine::Regist("createworldscene", HandleCreateWorldScene);
-    mzx::CmdLine::Regist("destroyscene", HandleDestroyScene);
-    mzx::CmdLine::Regist("listscene", HandleListScene);
-    mzx::CmdLine::Regist("selectscene", HandleSelectScene);
-
-    mzx::CmdLine::Regist("addentity", HandleAddEntity);
-    mzx::CmdLine::Regist("removeentiy", HandleRemoveEntity);
-    mzx::CmdLine::Regist("listentity", HandleListEntity);
-    mzx::CmdLine::Regist("selectentity", HandleSelectEntity);
-    mzx::CmdLine::Regist("printentity", HandlePrintEntity);
-
-    mzx::CmdLine::Regist("addcomponent", HandleAddComponent);
+bool CmdHandler::Regist(
+    const char *name, std::function<void(const std::vector<std::string> &)> cb)
+{
+    if (!name)
+    {
+        return false;
+    }
+    mzx::CmdLine::Regist(name, cb);
+    return true;
 }
 
 } // namespace cherry

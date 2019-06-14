@@ -54,9 +54,9 @@ private:
 #define CHERRY_COMPONENT_SERIALIZE_REGIST(T, serialize, unserialize)           \
     class ComponentSerializeRegister##T                                        \
     {                                                                          \
-        const static bool register_;                                           \
+        const static bool is_regist_;                                          \
     };                                                                         \
-    const bool ComponentSerializeRegister##T::register_ =                      \
+    const bool ComponentSerializeRegister##T::is_regist_ =                     \
         ComponentSerializeFactory::Instance().Regist(                          \
             mzx::Component<T>::CLASS_INDEX, #T, serialize, unserialize);
 
