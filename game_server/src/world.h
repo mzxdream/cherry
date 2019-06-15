@@ -27,6 +27,8 @@ public:
     SceneManager &GetSceneManager();
     EventManager &GetEventManager();
     int64_t CurTime() const;
+    int64_t LastTime() const;
+    int64_t DeltaTime() const;
 
     bool Init();
     void Uninit();
@@ -37,6 +39,7 @@ private:
     SceneManager scene_manager_;
     EventManager event_manager_;
     int64_t cur_time_{0};
+    int64_t last_time_{0};
     volatile bool stop_flag_{false};
 };
 

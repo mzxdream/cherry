@@ -40,11 +40,22 @@ int64_t World::CurTime() const
     return cur_time_;
 }
 
+int64_t World::LastTime() const
+{
+    return last_time_;
+}
+
+int64_t World::DeltaTime() const
+{
+    return FRAME_TIME;
+}
+
 bool World::Init()
 {
     mzx::Signal::Hook(mzx::SignalType::Interrupt, HandleSignal);
     mzx::Signal::Hook(mzx::SignalType::Terminal, HandleSignal);
     cur_time_ = mzx::DateTime::NowMilliseconds();
+    last_time_ = cur_time_;
     stop_flag_ = false;
     return true;
 }
@@ -67,6 +78,7 @@ void World::Run()
         auto next_time = mzx::DateTime::NowMilliseconds();
         while (!stop_flag_ && cur_time_ + FRAME_TIME <= next_time)
         {
+            last_time_ = cur_time_;
             cur_time_ += FRAME_TIME;
             scene_manager_.Update();
             CmdHandler::Instance().Execute();
