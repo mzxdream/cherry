@@ -21,6 +21,7 @@ public:
     void SetSelectSceneUUID(SceneUUID uuid);
     bool Start();
     void Stop();
+    void Execute();
     bool Regist(const char *name,
                 std::function<void(const std::vector<std::string> &)> cb);
 

@@ -35,6 +35,11 @@ World::EventManager &World::GetEventManager()
     return event_manager_;
 }
 
+int64_t World::CurTime() const
+{
+    return cur_time_;
+}
+
 bool World::Init()
 {
     mzx::Signal::Hook(mzx::SignalType::Interrupt, HandleSignal);
@@ -64,7 +69,7 @@ void World::Run()
         {
             cur_time_ += FRAME_TIME;
             scene_manager_.Update();
-            mzx::CmdLine::Execute();
+            CmdHandler::Instance().Execute();
         }
         if (!stop_flag_)
         {
@@ -73,10 +78,4 @@ void World::Run()
     }
     CmdHandler::Instance().Stop();
 }
-
-int64_t World::CurTime() const
-{
-    return cur_time_;
-}
-
 } // namespace cherry

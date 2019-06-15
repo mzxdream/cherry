@@ -53,6 +53,11 @@ void CmdHandler::Stop()
     mzx::CmdLine::Stop();
 }
 
+void CmdHandler::Execute()
+{
+    mzx::CmdLine::Execute();
+}
+
 bool CmdHandler::Regist(
     const char *name, std::function<void(const std::vector<std::string> &)> cb)
 {

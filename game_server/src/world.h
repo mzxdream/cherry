@@ -26,13 +26,12 @@ private:
 public:
     SceneManager &GetSceneManager();
     EventManager &GetEventManager();
+    int64_t CurTime() const;
 
     bool Init();
     void Uninit();
     void Stop();
     void Run();
-
-    int64_t CurTime() const;
 
 private:
     SceneManager scene_manager_;
