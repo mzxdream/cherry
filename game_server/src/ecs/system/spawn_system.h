@@ -10,12 +10,6 @@ class Scene;
 
 class SpawnSystem : public mzx::EntitySystem<SpawnSystem, void(Scene *)>
 {
-public:
-    SpawnSystem();
-    virtual ~SpawnSystem();
-    SpawnSystem(const SpawnSystem &) = delete;
-    SpawnSystem &operator=(const SpawnSystem &) = delete;
-
 private:
     void _Update(Scene *scene);
 };

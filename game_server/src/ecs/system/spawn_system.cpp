@@ -4,14 +4,6 @@
 namespace cherry
 {
 
-SpawnSystem::SpawnSystem()
-{
-}
-
-SpawnSystem::~SpawnSystem()
-{
-}
-
 void SpawnSystem::_Update(Scene *scene)
 {
 }

@@ -41,12 +41,11 @@ static void HandleAddComponent(const std::vector<std::string> &cmd)
         std::cout << "create component " << cmd[2] << " failed" << std::endl;
         return;
     }
-    if (!entity->AddComponent(component))
+    if (!entity->AttachComponent(component))
     {
         std::cout << "add component " << cmd[2] << " failed" << std::endl;
         return;
     }
-    delete component;
     std::cout << "add component " << cmd[2] << " success" << std::endl;
 }
 CHERRY_CMD_REGIST(addcomponent, HandleAddComponent);
