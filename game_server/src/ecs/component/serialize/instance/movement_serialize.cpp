@@ -28,10 +28,10 @@ static mzx::ComponentBase *UnserializeMovement(const std::string &data)
     {
         return nullptr;
     }
-    mzx::Vector3<int32_t> destination(mzx::UnsafeConvertTo<int32_t>(args[0]),
-                                      mzx::UnsafeConvertTo<int32_t>(args[1]),
-                                      mzx::UnsafeConvertTo<int32_t>(args[2]));
-    int32_t velocity = mzx::UnsafeConvertTo<int32_t>(args[3]);
+    mzx::Vector3<double> destination(mzx::UnsafeConvertTo<double>(args[0]),
+                                     mzx::UnsafeConvertTo<double>(args[1]),
+                                     mzx::UnsafeConvertTo<double>(args[2]));
+    auto velocity = mzx::UnsafeConvertTo<double>(args[3]);
     auto *component = new mzx::Component<Movement>(destination, velocity);
     return component;
 }

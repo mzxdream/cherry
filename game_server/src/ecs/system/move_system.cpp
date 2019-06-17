@@ -7,29 +7,36 @@
 namespace cherry
 {
 
-void MoveSystem::_Update(Scene *scene)
+static bool UpdateLocation(mzx::Entity *entity)
 {
     auto delta_time = World::Instance().DeltaTime();
-    scene->GetEntityManager().ForeachEntity<Location, Movement>(
-        [&delta_time](mzx::Entity *entity) {
-            auto *location = entity->GetComponent<Location>();
-            auto *movement = entity->GetComponent<Movement>();
-            auto len =
-                (movement->destination - location->position).SqrtMagnitude();
-            if (len <= delta_time * movement->velocity)
-            {
-                location->position = movement->destination;
-                entity->RemoveComponent<Movement>();
-            }
-            else
-            {
-                auto direction = movement->destination - location->position;
-                direction.Normalize();
-                location->position +=
-                    direction * delta_time * movement->velocity / 1000;
-            }
-            return true;
-        });
+    auto *location = entity->GetComponent<Location>();
+    auto *movement = entity->GetComponent<Movement>();
+    if (location->position == movement->destination)
+    {
+        entity->RemoveComponent<Movement>();
+        return true;
+    }
+    location->direction = mzx::Vector3<double>::Normalize(
+        movement->destination - location->position);
+    auto distance = mzx::Vector3<double>::Distance(location->position,
+                                                   movement->destination);
+    if (distance <= delta_time * movement->velocity)
+    {
+        location->position = movement->destination;
+        entity->RemoveComponent<Movement>();
+    }
+    else
+    {
+        location->position +=
+            location->direction * delta_time * movement->velocity;
+    }
+    return true;
+}
+
+void MoveSystem::_Update(Scene *scene)
+{
+    scene->GetEntityManager().ForeachEntity<Location, Movement>(UpdateLocation);
 }
 
 } // namespace cherry

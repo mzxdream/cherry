@@ -1,9 +1,10 @@
 #include <iostream>
 #include <mzx/convert.h>
 
+#include <cmd/cmd_handler.h>
+#include <ecs/component/serialize/component_serialize.h>
 #include <scene/instance/world_scene.h>
 #include <world.h>
-#include <cmd/cmd_handler.h>
 
 namespace cherry
 {
@@ -65,5 +66,45 @@ static void HandleSelectScene(const std::vector<std::string> &cmd)
     std::cout << "select scene:" << uuid << " success" << std::endl;
 }
 CHERRY_CMD_REGIST(selectscene, HandleSelectScene);
+
+static void HandleInfoScene(const std::vector<std::string> &cmd)
+{
+    if (cmd.size() < 2)
+    {
+        std::cout << "info scene cmd size < 2" << std::endl;
+        return;
+    }
+    auto uuid = mzx::UnsafeConvertTo<SceneUUID>(cmd[1]);
+    auto &scene_manager = World::Instance().GetSceneManager();
+    auto *scene = scene_manager.GetScene(uuid);
+    if (!scene)
+    {
+        std::cout << "scene:" << uuid << " not exist" << std::endl;
+        return;
+    }
+    std::cout << "entity count:" << scene->GetEntityManager().EntityCount()
+              << std::endl;
+    scene->GetEntityManager().ForeachEntity([](mzx::Entity *entity) {
+        std::cout << "entity:" << entity->ID() << std::endl;
+        entity->ForeachComponent([](mzx::ComponentBase *base) {
+            std::cout << "->index:" << base->ClassIndex();
+            std::string data;
+            const char *name =
+                ComponentSerializeFactory::Instance().Serialize(base, &data);
+            if (name)
+            {
+                std::cout << " name:" << name << " data:" << data;
+            }
+            else
+            {
+                std::cout << " name: ? data: ?";
+            }
+            std::cout << std::endl;
+            return true;
+        });
+        return true;
+    });
+}
+CHERRY_CMD_REGIST(infoscene, HandleInfoScene);
 
 } // namespace cherry

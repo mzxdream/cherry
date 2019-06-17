@@ -9,13 +9,13 @@ namespace cherry
 
 struct Movement
 {
-    explicit Movement(const mzx::Vector3<int32_t> &dest, int32_t v)
+    explicit Movement(const mzx::Vector3<double> &dest, double v)
         : destination(dest)
         , velocity(v)
     {
     }
-    mzx::Vector3<int32_t> destination;
-    int32_t velocity;
+    mzx::Vector3<double> destination;
+    double velocity;
 };
 
 } // namespace cherry

@@ -9,14 +9,14 @@ namespace cherry
 
 struct Location
 {
-    explicit Location(const mzx::Vector3<int32_t> &d,
-                      const mzx::Vector3<int32_t> &p)
+    explicit Location(const mzx::Vector3<double> &d,
+                      const mzx::Vector3<double> &p)
         : direction(d)
         , position(p)
     {
     }
-    mzx::Vector3<int32_t> direction;
-    mzx::Vector3<int32_t> position;
+    mzx::Vector3<double> direction;
+    mzx::Vector3<double> position;
 };
 
 } // namespace cherry

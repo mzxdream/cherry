@@ -28,12 +28,13 @@ static mzx::ComponentBase *UnserializeLocation(const std::string &data)
     {
         return nullptr;
     }
-    mzx::Vector3<int32_t> direction(mzx::UnsafeConvertTo<int32_t>(args[0]),
-                                    mzx::UnsafeConvertTo<int32_t>(args[1]),
-                                    mzx::UnsafeConvertTo<int32_t>(args[2]));
-    mzx::Vector3<int32_t> position(mzx::UnsafeConvertTo<int32_t>(args[3]),
-                                   mzx::UnsafeConvertTo<int32_t>(args[4]),
-                                   mzx::UnsafeConvertTo<int32_t>(args[5]));
+    mzx::Vector3<double> direction(mzx::UnsafeConvertTo<double>(args[0]),
+                                   mzx::UnsafeConvertTo<double>(args[1]),
+                                   mzx::UnsafeConvertTo<double>(args[2]));
+    direction.Normalize();
+    mzx::Vector3<double> position(mzx::UnsafeConvertTo<double>(args[3]),
+                                  mzx::UnsafeConvertTo<double>(args[4]),
+                                  mzx::UnsafeConvertTo<double>(args[5]));
     auto *component = new mzx::Component<Location>(direction, position);
     return component;
 }
