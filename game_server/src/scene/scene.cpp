@@ -5,7 +5,6 @@ namespace cherry
 
 Scene::Scene(SceneUUID uuid)
     : uuid_(uuid)
-    , need_destroy_(false)
 {
 }
 
@@ -28,6 +27,11 @@ bool Scene::IsNeedDestroy() const
     return need_destroy_;
 }
 
+mzx::Entity &Scene::GetSceneEntity()
+{
+    return *scene_entity_;
+}
+
 Scene::EventManager &Scene::GetEventManager()
 {
     return event_manager_;
@@ -45,12 +49,18 @@ Scene::EntitySystemManager &Scene::GetSystemManager()
 
 bool Scene::Init()
 {
+    scene_entity_ = entity_manager_.AddEntity();
+    if (!scene_entity_)
+    {
+        return false;
+    }
     return _Init();
 }
 
 void Scene::Uninit()
 {
     _Uninit();
+    scene_entity_ = nullptr;
 }
 
 void Scene::Update()

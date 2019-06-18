@@ -28,6 +28,7 @@ public:
     SceneUUID UUID() const;
     void SetNeedDestroy(bool need_destroy = true);
     bool IsNeedDestroy() const;
+    mzx::Entity &GetSceneEntity();
     EventManager &GetEventManager();
     EntityManager &GetEntityManager();
     EntitySystemManager &GetSystemManager();
@@ -44,6 +45,7 @@ private:
 private:
     SceneUUID uuid_{SCENE_UUID_INVALID};
     bool need_destroy_{false};
+    mzx::Entity *scene_entity_{nullptr};
     EventManager event_manager_;
     EntityManager entity_manager_;
     EntitySystemManager system_manager_;
