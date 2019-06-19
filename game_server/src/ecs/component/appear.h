@@ -11,7 +11,7 @@ class Entity;
 
 }
 
-namespace cherry 
+namespace cherry
 {
 
 struct Appear
@@ -22,6 +22,6 @@ struct Appear
     std::set<mzx::Entity *> follower_list;
 };
 
-} // namespace Appear
+} // namespace cherry
 
 #endif
