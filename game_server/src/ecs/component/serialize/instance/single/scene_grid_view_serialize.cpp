@@ -19,8 +19,8 @@ static bool SerializeSceneGridView(const mzx::ComponentBase *base,
     *data = mzx::ConvertTo<std::string>(component->grid_size);
     for (auto &iter_grid : component->grid_list)
     {
-        *data += mzx::Concat(";[", iter_grid.first.first, ",",
-                             iter_grid.first.second, "]");
+        *data += mzx::Concat(";[", iter_grid.first & 0xFFFF, ",",
+                             iter_grid.first >> 16, "]");
         for (auto &entity : iter_grid.second)
         {
             *data += mzx::Concat(",", entity->ID());

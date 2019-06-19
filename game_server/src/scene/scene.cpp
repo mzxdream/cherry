@@ -29,9 +29,9 @@ bool Scene::IsNeedDestroy() const
     return need_destroy_;
 }
 
-mzx::Entity &Scene::GetSceneEntity()
+mzx::Entity *Scene::GetSceneEntity()
 {
-    return *scene_entity_;
+    return scene_entity_;
 }
 
 Scene::EventManager &Scene::GetEventManager()

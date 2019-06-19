@@ -28,7 +28,7 @@ public:
     SceneUUID UUID() const;
     void SetNeedDestroy(bool need_destroy = true);
     bool IsNeedDestroy() const;
-    mzx::Entity &GetSceneEntity();
+    mzx::Entity *GetSceneEntity();
     EventManager &GetEventManager();
     EntityManager &GetEntityManager();
     EntitySystemManager &GetSystemManager();

@@ -3,9 +3,7 @@
 
 #include <cstdint>
 #include <map>
-#include <mzx/util.h>
 #include <set>
-#include <unordered_map>
 
 namespace mzx
 {
@@ -24,9 +22,8 @@ struct SceneGridView
     {
     }
     double grid_size{0};
-    std::unordered_map<std::pair<int, int>, std::set<mzx::Entity *>,
-                       mzx::PairHash>
-        grid_list;
+    std::map<uint32_t, std::set<mzx::Entity *>> grid_list;
+    std::map<mzx::Entity *, uint32_t> entity_grid_index;
 };
 
 } // namespace cherry
