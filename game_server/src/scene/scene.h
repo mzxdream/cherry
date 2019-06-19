@@ -37,6 +37,11 @@ public:
     void Uninit();
     void Update();
 
+    void OnAddComponent(mzx::Entity *entity, mzx::ComponentBase *base);
+    void OnRemoveComponent(mzx::Entity *entity, mzx::ComponentBase *base);
+    void OnAddEntity(mzx::Entity *entity);
+    void OnRemoveEntity(mzx::Entity *entity);
+
 private:
     virtual bool _Init();
     virtual void _Uninit();
