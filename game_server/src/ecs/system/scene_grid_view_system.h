@@ -18,6 +18,7 @@ public:
 
     void OnAddComponent(const mzx::SimpleEventBase *base);
     void OnRemoveComponent(const mzx::SimpleEventBase *base);
+    void OnPositionChange(const mzx::SimpleEventBase *base);
 
 private:
     void _Update(Scene *scene);

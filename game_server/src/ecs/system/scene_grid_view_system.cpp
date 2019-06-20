@@ -1,11 +1,11 @@
 #include <iostream>
 
-#include <ecs/component/appear.h>
 #include <ecs/component/location.h>
 #include <ecs/component/serialize/component_serialize.h>
 #include <ecs/component/single/scene_grid_view.h>
 #include <ecs/component/view.h>
 #include <ecs/event/component_event.h>
+#include <ecs/event/position_change_event.h>
 #include <ecs/system/scene_grid_view_system.h>
 #include <scene/scene.h>
 #include <world.h>
@@ -24,6 +24,10 @@ SceneGridViewSystem::SceneGridViewSystem(Scene *scene)
         std::bind(&SceneGridViewSystem::OnRemoveComponent, this,
                   std::placeholders::_1),
         this);
+    scene_->GetEventManager().AddListener<PositionChangeEvent>(
+        std::bind(&SceneGridViewSystem::OnPositionChange, this,
+                  std::placeholders::_1),
+        this);
     scene_->GetSceneEntity()->AddComponent<SceneGridView>(100.0);
 }
 
@@ -32,181 +36,145 @@ SceneGridViewSystem::~SceneGridViewSystem()
     scene_->GetSceneEntity()->RemoveComponent<SceneGridView>();
     scene_->GetEventManager().RemoveListener<ComponentAddEvent>(this);
     scene_->GetEventManager().RemoveListener<ComponentRemoveEvent>(this);
+    scene_->GetEventManager().RemoveListener<PositionChangeEvent>(this);
 }
 
 static void OnAddLocation(Scene *scene, mzx::Entity *entity,
                           mzx::ComponentBase *component_base)
 {
-    auto *scene_grid_view = scene->GetSceneEntity();
-    auto *location =
-        static_cast<mzx::Component<Location> *>(component_base)->Get();
-    auto *appear = entity->GetComponent<Appear>();
-    auto *view = entity->GetComponent<View>();
-    if (!appear && !view)
+    auto *scene_grid_view =
+        scene->GetSceneEntity()->GetComponent<SceneGridView>();
+    if (entity->HasComponent<ViewPublish>())
+    {
+        scene_grid_view->publish_add_list.insert(entity);
+    }
+    if (entity->HasComponent<ViewSubscribe>())
+    {
+        scene_grid_view->subscribe_add_list.insert(entity);
+    }
+}
+
+static void OnAddViewPublish(Scene *scene, mzx::Entity *entity,
+                             mzx::ComponentBase *component_base)
+{
+    auto *scene_grid_view =
+        scene->GetSceneEntity()->GetComponent<SceneGridView>();
+    if (entity->HasComponent<Location>())
+    {
+        scene_grid_view->publish_add_list.insert(entity);
+    }
+}
+
+static void OnAddViewSubscribe(Scene *scene, mzx::Entity *entity,
+                               mzx::ComponentBase *component_base)
+{
+    auto *scene_grid_view =
+        scene->GetSceneEntity()->GetComponent<SceneGridView>();
+    if (entity->HasComponent<Location>())
+    {
+        scene_grid_view->subscribe_add_list.insert(entity);
+    }
+}
+
+static void OnRemoveLocation(Scene *scene, mzx::Entity *entity,
+                             mzx::ComponentBase *component_base)
+{
+    if (!entity->HasComponent<ViewPublish>() ||
+        !entity->HasComponent<ViewSubscribe>())
     {
         return;
     }
-    auto grid_x = static_cast<uint32_t>(location->position.X() /
-                                        scene_grid_view->grid_size);
-    auto grid_z = static_cast<uint32_t>(location->position.Z() /
-                                        scene_grid_view->grid_size);
-    uint32_t grid_index = grid_x << 16 + grid_z;
-    scene_grid_view->grid_list[grid_index].insert(entity);
-    scene_grid_view->entity_grid_index[entity] = grid_index;
-    for (uint32_t i = grid_x + 2; i >= grid_x && i > 0; --i)
+    auto *scene_grid_view =
+        scene->GetSceneEntity()->GetComponent<SceneGridView>();
+    auto iter_index = scene_grid_view->entity_grid_index.find(entity);
+    if (iter_index != scene_grid_view->entity_grid_index.end())
     {
-        for (uint32_t j = grid_z + 2; j >= grid_z && j > 0; --j)
+        scene_grid_view->grid_list[iter_index->second].erase(entity);
+        scene_grid_view->entity_grid_index.erase(iter_index);
+    }
+    scene_grid_view->publish_add_list.erase(entity);
+    scene_grid_view->subscribe_add_list.erase(entity);
+    scene_grid_view->position_change_list.erase(entity);
+    auto *view_publish = entity->GetComponent<ViewPublish>();
+    if (view_publish)
+    {
+        for (auto &subscribe : view_publish->subscribe_list)
         {
-            auto index = (i - 1) << 16 + (j - 1);
-            auto iter_grid = scene_grid_view->grid_list.find(index);
-            if (iter_grid == scene_grid_view->grid_list.end())
-            {
-                continue;
-            }
-            for (auto &other : iter_grid->second)
-            {
-                if (other == entity)
-                {
-                    continue;
-                }
-                auto *view = other->GetComponent<View>();
-                if (!view)
-                {
-                    continue;
-                }
-                view->see_list.insert(entity);
-                appear->follower_list.insert(other);
-            }
+            subscribe->GetComponent<ViewSubscribe>()->publish_list.erase(
+                entity);
+        }
+    }
+    auto *view_subscribe = entity->GetComponent<ViewSubscribe>();
+    if (view_subscribe)
+    {
+        for (auto &publish : view_subscribe->publish_list)
+        {
+            publish->GetComponent<ViewPublish>()->subscribe_list.erase(entity);
         }
     }
 }
 
-static void OnAddAppear(Scene *scene, mzx::Entity *entity,
-                        mzx::ComponentBase *component_base)
+static void OnRemoveViewPublish(Scene *scene, mzx::Entity *entity,
+                                mzx::ComponentBase *component_base)
 {
-    auto *scene_grid_view = scene->GetSceneEntity();
-    auto *location = entity->GetComponent<Location>();
-    auto *appear = entity->GetComponent<Appear>();
-
-    auto grid_x = static_cast<uint32_t>(location->position.X() /
-                                        scene_grid_view->grid_size);
-    auto grid_z = static_cast<uint32_t>(location->position.Z() /
-                                        scene_grid_view->grid_size);
-    uint32_t grid_index = grid_x << 16 + grid_z;
-    scene_grid_view->grid_list[grid_index].insert(entity);
-    scene_grid_view->entity_grid_index[entity] = grid_index;
-    for (uint32_t i = grid_x + 2; i >= grid_x && i > 0; --i)
+    if (!entity->HasComponent<Location>())
     {
-        for (uint32_t j = grid_z + 2; j >= grid_z && j > 0; --j)
+        return;
+    }
+    auto *scene_grid_view =
+        scene->GetSceneEntity()->GetComponent<SceneGridView>();
+    if (!entity->HasComponent<ViewSubscribe>())
+    {
+        auto iter_index = scene_grid_view->entity_grid_index.find(entity);
+        if (iter_index != scene_grid_view->entity_grid_index.end())
         {
-            auto index = (i - 1) << 16 + (j - 1);
-            auto iter_grid = scene_grid_view->grid_list.find(index);
-            if (iter_grid == scene_grid_view->grid_list.end())
-            {
-                continue;
-            }
-            for (auto &other : iter_grid->second)
-            {
-                if (other == entity)
-                {
-                    continue;
-                }
-                auto *view = other->GetComponent<View>();
-                if (!view)
-                {
-                    continue;
-                }
-                view->see_list.insert(entity);
-                appear->follower_list.insert(other);
-            }
+            scene_grid_view->grid_list[iter_index->second].erase(entity);
+            scene_grid_view->entity_grid_index.erase(iter_index);
+        }
+        scene_grid_view->position_change_list.erase(entity);
+    }
+    scene_grid_view->publish_add_list.erase(entity);
+    auto *view_publish =
+        static_cast<mzx::Component<ViewPublish> *>(component_base)->Get();
+    if (view_publish)
+    {
+        for (auto &subscribe : view_publish->subscribe_list)
+        {
+            subscribe->GetComponent<ViewSubscribe>()->publish_list.erase(
+                entity);
         }
     }
 }
 
-static void OnRemoveAppear(Scene *scene, mzx::Entity *entity)
+static void OnRemoveViewSubscribe(Scene *scene, mzx::Entity *entity,
+                                  mzx::ComponentBase *component_base)
 {
-    auto *scene_grid_view = scene->GetSceneEntity();
-    auto *location = entity->GetComponent<Location>();
-    auto *appear = entity->GetComponent<Appear>();
-
-    auto grid_x = static_cast<uint32_t>(location->position.X() /
-                                        scene_grid_view->grid_size);
-    auto grid_z = static_cast<uint32_t>(location->position.Z() /
-                                        scene_grid_view->grid_size);
-    uint32_t grid_index = grid_x << 16 + grid_z;
-    scene_grid_view->grid_list[grid_index].insert(entity);
-    scene_grid_view->entity_grid_index[entity] = grid_index;
-    for (uint32_t i = grid_x + 2; i >= grid_x && i > 0; --i)
+    if (!entity->HasComponent<Location>())
     {
-        for (uint32_t j = grid_z + 2; j >= grid_z && j > 0; --j)
+        return;
+    }
+    auto *scene_grid_view =
+        scene->GetSceneEntity()->GetComponent<SceneGridView>();
+    if (!entity->HasComponent<ViewPublish>())
+    {
+        auto iter_index = scene_grid_view->entity_grid_index.find(entity);
+        if (iter_index != scene_grid_view->entity_grid_index.end())
         {
-            auto index = (i - 1) << 16 + (j - 1);
-            auto iter_grid = scene_grid_view->grid_list.find(index);
-            if (iter_grid == scene_grid_view->grid_list.end())
-            {
-                continue;
-            }
-            for (auto &other : iter_grid->second)
-            {
-                if (other == entity)
-                {
-                    continue;
-                }
-                auto *view = other->GetComponent<View>();
-                if (!view)
-                {
-                    continue;
-                }
-                view->see_list.insert(entity);
-                appear->follower_list.insert(other);
-            }
+            scene_grid_view->grid_list[iter_index->second].erase(entity);
+            scene_grid_view->entity_grid_index.erase(iter_index);
+        }
+        scene_grid_view->position_change_list.erase(entity);
+    }
+    scene_grid_view->subscribe_add_list.erase(entity);
+    auto *view_subscribe =
+        static_cast<mzx::Component<ViewSubscribe> *>(component_base)->Get();
+    if (view_subscribe)
+    {
+        for (auto &publish : view_subscribe->publish_list)
+        {
+            publish->GetComponent<ViewPublish>()->subscribe_list.erase(entity);
         }
     }
-}
-
-static void OnAddView(Scene *scene, mzx::Entity *entity)
-{
-    auto *scene_grid_view = scene->GetSceneEntity();
-    auto *location = entity->GetComponent<Location>();
-    auto *view = entity->GetComponent<View>();
-
-    auto grid_x = static_cast<uint32_t>(location->position.X() /
-                                        scene_grid_view->grid_size);
-    auto grid_z = static_cast<uint32_t>(location->position.Z() /
-                                        scene_grid_view->grid_size);
-    uint32_t grid_index = grid_x << 16 + grid_z;
-    scene_grid_view->grid_list[grid_index].insert(entity);
-    scene_grid_view->entity_grid_index[entity] = grid_index;
-    for (uint32_t i = grid_x + 2; i >= grid_x && i > 0; --i)
-    {
-        for (uint32_t j = grid_z + 2; j >= grid_z && j > 0; --j)
-        {
-            auto index = (i - 1) << 16 + (j - 1);
-            auto iter_grid = scene_grid_view->grid_list.find(index);
-            if (iter_grid == scene_grid_view->grid_list.end())
-            {
-                continue;
-            }
-            for (auto &other : iter_grid->second)
-            {
-                if (other == entity)
-                {
-                    continue;
-                }
-                auto *appear = other->GetComponent<Appear>();
-                if (!appear)
-                {
-                    continue;
-                }
-                view->see_list.insert(other);
-                appear->follower_list.insert(entity);
-            }
-        }
-    }
-}
-
-static void OnRemoveView(Scene *scene, mzx::Entity *entity)
-{
 }
 
 void SceneGridViewSystem::OnAddComponent(const mzx::SimpleEventBase *base)
@@ -231,13 +199,13 @@ void SceneGridViewSystem::OnAddComponent(const mzx::SimpleEventBase *base)
     {
         OnAddLocation(scene_, event->entity, event->component_base);
     }
-    else if (class_index == mzx::Component<Appear>::CLASS_INDEX)
+    else if (class_index == mzx::Component<ViewPublish>::CLASS_INDEX)
     {
-        OnAddAppear(scene_, event->entity, event->component_base);
+        OnAddViewPublish(scene_, event->entity, event->component_base);
     }
-    else if (class_index == mzx::Component<View>::CLASS_INDEX)
+    else if (class_index == mzx::Component<ViewSubscribe>::CLASS_INDEX)
     {
-        OnAddView(scene_, event->entity, event->component_base);
+        OnAddViewSubscribe(scene_, event->entity, event->component_base);
     }
 }
 
@@ -263,18 +231,280 @@ void SceneGridViewSystem::OnRemoveComponent(const mzx::SimpleEventBase *base)
     {
         OnRemoveLocation(scene_, event->entity, event->component_base);
     }
-    else if (class_index == mzx::Component<Appear>::CLASS_INDEX)
+    else if (class_index == mzx::Component<ViewPublish>::CLASS_INDEX)
     {
-        OnRemoveAppear(scene_, event->entity, event->component_base);
+        OnRemoveViewPublish(scene_, event->entity, event->component_base);
     }
-    else if (class_index == mzx::Component<View>::CLASS_INDEX)
+    else if (class_index == mzx::Component<ViewSubscribe>::CLASS_INDEX)
     {
-        OnRemoveView(scene_, event->entity, event->component_base);
+        OnRemoveViewSubscribe(scene_, event->entity, event->component_base);
     }
+}
+
+void SceneGridViewSystem::OnPositionChange(const mzx::SimpleEventBase *base)
+{
+    auto *event = static_cast<const PositionChangeEvent *>(base);
+    std::cout << "OnPositionChange entity:" << event->entity->ID() << std::endl;
+    auto *entity = event->entity;
+    if (entity->HasComponent<ViewPublish>() ||
+        entity->HasComponent<ViewSubscribe>())
+    {
+        auto *scene_grid_view =
+            scene_->GetSceneEntity()->GetComponent<SceneGridView>();
+        scene_grid_view->position_change_list.insert(entity);
+    }
+}
+
+static void HandlePublishAdd(Scene *scene)
+{
+    auto *scene_grid_view =
+        scene->GetSceneEntity()->GetComponent<SceneGridView>();
+    for (auto &entity : scene_grid_view->publish_add_list)
+    {
+        uint32_t grid_x = 0;
+        uint32_t grid_z = 0;
+        auto iter_grid = scene_grid_view->entity_grid_index.find(entity);
+        if (iter_grid == scene_grid_view->entity_grid_index.end())
+        {
+            auto *location = entity->GetComponent<Location>();
+            grid_x = static_cast<uint32_t>(location->position.X() /
+                                           scene_grid_view->grid_size);
+            grid_z = static_cast<uint32_t>(location->position.Z() /
+                                           scene_grid_view->grid_size);
+            uint32_t grid_index = (grid_x << 16) + grid_z;
+            scene_grid_view->grid_list[grid_index].insert(entity);
+            scene_grid_view->entity_grid_index[entity] = grid_index;
+        }
+        else
+        {
+            grid_x = iter_grid->second >> 16;
+            grid_z = iter_grid->second & 0xFFFF;
+        }
+        auto *view_publish = entity->GetComponent<ViewPublish>();
+        for (uint32_t i = grid_x + 2; i >= grid_x && i > 0; --i)
+        {
+            for (uint32_t j = grid_z + 2; j >= grid_z && j > 0; --j)
+            {
+                auto index = ((i - 1) << 16) + (j - 1);
+                auto iter_grid = scene_grid_view->grid_list.find(index);
+                if (iter_grid == scene_grid_view->grid_list.end())
+                {
+                    continue;
+                }
+                for (auto &other : iter_grid->second)
+                {
+                    if (other == entity)
+                    {
+                        continue;
+                    }
+                    auto *other_view_subscribe =
+                        other->GetComponent<ViewSubscribe>();
+                    if (other_view_subscribe)
+                    {
+                        other_view_subscribe->publish_list.insert(entity);
+                        view_publish->subscribe_list.insert(other);
+                    }
+                }
+            }
+        }
+    }
+    scene_grid_view->publish_add_list.clear();
+}
+
+static void HandleSubscribeAdd(Scene *scene)
+{
+    auto *scene_grid_view =
+        scene->GetSceneEntity()->GetComponent<SceneGridView>();
+    for (auto &entity : scene_grid_view->subscribe_add_list)
+    {
+        uint32_t grid_x = 0;
+        uint32_t grid_z = 0;
+        auto iter_grid = scene_grid_view->entity_grid_index.find(entity);
+        if (iter_grid == scene_grid_view->entity_grid_index.end())
+        {
+            auto *location = entity->GetComponent<Location>();
+            grid_x = static_cast<uint32_t>(location->position.X() /
+                                           scene_grid_view->grid_size);
+            grid_z = static_cast<uint32_t>(location->position.Z() /
+                                           scene_grid_view->grid_size);
+            uint32_t grid_index = (grid_x << 16) + grid_z;
+            scene_grid_view->grid_list[grid_index].insert(entity);
+            scene_grid_view->entity_grid_index[entity] = grid_index;
+        }
+        else
+        {
+            grid_x = iter_grid->second >> 16;
+            grid_z = iter_grid->second & 0xFFFF;
+        }
+        auto *view_subscribe = entity->GetComponent<ViewSubscribe>();
+        for (uint32_t i = grid_x + 2; i >= grid_x && i > 0; --i)
+        {
+            for (uint32_t j = grid_z + 2; j >= grid_z && j > 0; --j)
+            {
+                auto index = ((i - 1) << 16) + (j - 1);
+                auto iter_grid = scene_grid_view->grid_list.find(index);
+                if (iter_grid == scene_grid_view->grid_list.end())
+                {
+                    continue;
+                }
+                for (auto &other : iter_grid->second)
+                {
+                    if (other == entity)
+                    {
+                        continue;
+                    }
+                    auto *other_view_publish =
+                        other->GetComponent<ViewPublish>();
+                    if (other_view_publish)
+                    {
+                        other_view_publish->subscribe_list.insert(entity);
+                        view_subscribe->publish_list.insert(other);
+                    }
+                }
+            }
+        }
+    }
+    scene_grid_view->subscribe_add_list.clear();
+}
+
+static bool IsInGrid(uint32_t x, uint32_t z, uint32_t grid_x, uint32_t grid_z)
+{
+    if (x > grid_x + 1 || x + 1 < grid_x)
+    {
+        return false;
+    }
+    if (z > grid_z + 1 || z + 1 < grid_z)
+    {
+        return false;
+    }
+    return true;
+}
+
+static void HandlePositionChange(Scene *scene)
+{
+    auto *scene_grid_view =
+        scene->GetSceneEntity()->GetComponent<SceneGridView>();
+    for (auto &entity : scene_grid_view->position_change_list)
+    {
+        auto iter_grid = scene_grid_view->entity_grid_index.find(entity);
+        if (iter_grid == scene_grid_view->entity_grid_index.end())
+        {
+            continue;
+        }
+        auto old_grid_index = iter_grid->second;
+        auto *location = entity->GetComponent<Location>();
+        auto grid_x = static_cast<uint32_t>(location->position.X() /
+                                            scene_grid_view->grid_size);
+        auto grid_z = static_cast<uint32_t>(location->position.Z() /
+                                            scene_grid_view->grid_size);
+        uint32_t grid_index = (grid_x << 16) + grid_z;
+        if (old_grid_index == grid_index)
+        {
+            continue;
+        }
+        auto old_grid_x = old_grid_index >> 16;
+        auto old_grid_z = old_grid_index & 0xFFFF;
+        scene_grid_view->grid_list[old_grid_index].erase(entity);
+        scene_grid_view->grid_list[grid_index].insert(entity);
+        scene_grid_view->entity_grid_index[entity] = grid_index;
+
+        auto *view_publish = entity->GetComponent<ViewPublish>();
+        auto *view_subscribe = entity->GetComponent<ViewSubscribe>();
+        for (uint32_t i = grid_x + 2; i >= grid_x && i > 0; --i)
+        {
+            for (uint32_t j = grid_z + 2; j >= grid_z && j > 0; --j)
+            {
+                if (IsInGrid(i - 1, j - 1, old_grid_x, old_grid_z))
+                {
+                    continue;
+                }
+                auto index = ((i - 1) << 16) + (j - 1);
+                auto iter_grid = scene_grid_view->grid_list.find(index);
+                if (iter_grid == scene_grid_view->grid_list.end())
+                {
+                    continue;
+                }
+                for (auto &other : iter_grid->second)
+                {
+                    if (other == entity)
+                    {
+                        continue;
+                    }
+                    if (view_publish)
+                    {
+                        auto *other_view_subscribe =
+                            other->GetComponent<ViewSubscribe>();
+                        if (other_view_subscribe)
+                        {
+                            other_view_subscribe->publish_list.insert(entity);
+                            view_publish->subscribe_list.insert(other);
+                        }
+                    }
+                    if (view_subscribe)
+                    {
+                        auto *other_view_publish =
+                            other->GetComponent<ViewPublish>();
+                        if (other_view_publish)
+                        {
+                            other_view_publish->subscribe_list.insert(entity);
+                            view_subscribe->publish_list.insert(other);
+                        }
+                    }
+                }
+            }
+        }
+        for (uint32_t i = old_grid_x + 2; i >= old_grid_x && i > 0; --i)
+        {
+            for (uint32_t j = old_grid_z + 2; j >= old_grid_z && j > 0; --j)
+            {
+                if (IsInGrid(i - 1, j - 1, grid_x, grid_z))
+                {
+                    continue;
+                }
+                auto index = ((i - 1) << 16) + (j - 1);
+                auto iter_grid = scene_grid_view->grid_list.find(index);
+                if (iter_grid == scene_grid_view->grid_list.end())
+                {
+                    continue;
+                }
+                for (auto &other : iter_grid->second)
+                {
+                    if (other == entity)
+                    {
+                        continue;
+                    }
+                    if (view_publish)
+                    {
+                        auto *other_view_subscribe =
+                            other->GetComponent<ViewSubscribe>();
+                        if (other_view_subscribe)
+                        {
+                            other_view_subscribe->publish_list.erase(entity);
+                            view_publish->subscribe_list.erase(other);
+                        }
+                    }
+                    if (view_subscribe)
+                    {
+                        auto *other_view_publish =
+                            other->GetComponent<ViewPublish>();
+                        if (other_view_publish)
+                        {
+                            other_view_publish->subscribe_list.erase(entity);
+                            view_subscribe->publish_list.erase(other);
+                        }
+                    }
+                }
+            }
+        }
+    }
+    scene_grid_view->position_change_list.clear();
 }
 
 void SceneGridViewSystem::_Update(Scene *scene)
 {
+    HandlePublishAdd(scene);
+    HandleSubscribeAdd(scene);
+    HandlePositionChange(scene);
 }
 
 } // namespace cherry

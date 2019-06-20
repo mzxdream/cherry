@@ -14,12 +14,14 @@ class Entity;
 namespace cherry
 {
 
-struct View
+struct ViewPublish
 {
-    explicit View()
-    {
-    }
-    std::set<mzx::Entity *> see_list;
+    std::set<mzx::Entity *> subscribe_list;
+};
+
+struct ViewSubscribe
+{
+    std::set<mzx::Entity *> publish_list;
 };
 
 } // namespace cherry

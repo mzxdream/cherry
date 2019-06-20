@@ -29,6 +29,7 @@ void WorldScene::_Uninit()
 void WorldScene::_Update()
 {
     GetSystemManager().Update<MoveSystem>(this);
+    GetSystemManager().Update<SceneGridViewSystem>(this);
 }
 
 } // namespace cherry

@@ -24,6 +24,9 @@ struct SceneGridView
     double grid_size{0};
     std::map<uint32_t, std::set<mzx::Entity *>> grid_list;
     std::map<mzx::Entity *, uint32_t> entity_grid_index;
+    std::set<mzx::Entity *> publish_add_list;
+    std::set<mzx::Entity *> subscribe_add_list;
+    std::set<mzx::Entity *> position_change_list;
 };
 
 } // namespace cherry
