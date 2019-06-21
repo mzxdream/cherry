@@ -180,20 +180,6 @@ static void OnRemoveViewSubscribe(Scene *scene, mzx::Entity *entity,
 void SceneGridViewSystem::OnAddComponent(const mzx::SimpleEventBase *base)
 {
     auto *event = static_cast<const ComponentAddEvent *>(base);
-    std::cout << "OnAddComponent entity:" << event->entity->ID();
-    std::string data;
-    auto *name = ComponentSerializeFactory::Instance().Serialize(
-        event->component_base, &data);
-    std::cout << " component:" << event->component_base->ClassIndex();
-    if (!name)
-    {
-        std::cout << " name: ? data: ?";
-    }
-    else
-    {
-        std::cout << " name:" << name << " data:" << data;
-    }
-    std::cout << std::endl;
     auto class_index = event->component_base->ClassIndex();
     if (class_index == mzx::Component<Location>::CLASS_INDEX)
     {
@@ -212,20 +198,6 @@ void SceneGridViewSystem::OnAddComponent(const mzx::SimpleEventBase *base)
 void SceneGridViewSystem::OnRemoveComponent(const mzx::SimpleEventBase *base)
 {
     auto *event = static_cast<const ComponentRemoveEvent *>(base);
-    std::cout << "OnRemoveComponent entity:" << event->entity->ID();
-    std::string data;
-    auto *name = ComponentSerializeFactory::Instance().Serialize(
-        event->component_base, &data);
-    std::cout << " component:" << event->component_base->ClassIndex();
-    if (!name)
-    {
-        std::cout << " name: ? data: ?";
-    }
-    else
-    {
-        std::cout << " name:" << name << " data:" << data;
-    }
-    std::cout << std::endl;
     auto class_index = event->component_base->ClassIndex();
     if (class_index == mzx::Component<Location>::CLASS_INDEX)
     {
@@ -244,7 +216,6 @@ void SceneGridViewSystem::OnRemoveComponent(const mzx::SimpleEventBase *base)
 void SceneGridViewSystem::OnPositionChange(const mzx::SimpleEventBase *base)
 {
     auto *event = static_cast<const PositionChangeEvent *>(base);
-    std::cout << "OnPositionChange entity:" << event->entity->ID() << std::endl;
     auto *entity = event->entity;
     if (entity->HasComponent<ViewPublish>() ||
         entity->HasComponent<ViewSubscribe>())

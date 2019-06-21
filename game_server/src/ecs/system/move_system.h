@@ -11,7 +11,7 @@ class Scene;
 class MoveSystem : public mzx::EntitySystem<MoveSystem, void(Scene *)>
 {
 private:
-    void _Update(Scene *scene);
+    virtual void _Update(Scene *scene) override;
 };
 
 } // namespace cherry

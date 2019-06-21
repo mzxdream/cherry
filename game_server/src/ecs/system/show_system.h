@@ -1,5 +1,5 @@
-#ifndef __CHERRY_SCENE_GRID_VIEW_SYSTEM_H__
-#define __CHERRY_SCENE_GRID_VIEW_SYSTEM_H__
+#ifndef __CHERRY_SHOW_SYSTEM_H__
+#define __CHERRY_SHOW_SYSTEM_H__
 
 #include <mzx/ecs.h>
 #include <mzx/simple_event.h>
@@ -9,16 +9,16 @@ namespace cherry
 
 class Scene;
 
-class SceneGridViewSystem
-    : public mzx::EntitySystem<SceneGridViewSystem, void(Scene *)>
+class ShowSystem : public mzx::EntitySystem<ShowSystem, void(Scene *)>
 {
 public:
-    explicit SceneGridViewSystem(Scene *scene);
-    virtual ~SceneGridViewSystem();
+    explicit ShowSystem(Scene *scene);
+    virtual ~ShowSystem();
 
+    void OnAddEntity(const mzx::SimpleEventBase *base);
+    void OnRemoveEntity(const mzx::SimpleEventBase *base);
     void OnAddComponent(const mzx::SimpleEventBase *base);
     void OnRemoveComponent(const mzx::SimpleEventBase *base);
-    void OnPositionChange(const mzx::SimpleEventBase *base);
 
 private:
     virtual void _Update(Scene *scene) override;
@@ -30,4 +30,3 @@ private:
 } // namespace cherry
 
 #endif
-

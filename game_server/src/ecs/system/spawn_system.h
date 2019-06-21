@@ -11,7 +11,7 @@ class Scene;
 class SpawnSystem : public mzx::EntitySystem<SpawnSystem, void(Scene *)>
 {
 private:
-    void _Update(Scene *scene);
+    virtual void _Update(Scene *scene) override;
 };
 
 } // namespace cherry
