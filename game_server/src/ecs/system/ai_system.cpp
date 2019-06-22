@@ -1,3 +1,5 @@
+#include <mzx/random.h>
+
 #include <ecs/component/ai.h>
 #include <ecs/component/hatred.h>
 #include <ecs/component/location.h>
@@ -52,6 +54,10 @@ void AISystem::_Update(Scene *scene)
                 auto *movement = entity->GetComponent<Movement>();
                 if (!movement)
                 {
+                    mzx::Vector3<double> destination(mzx::Random(0.0, 400.0),
+                                                     mzx::Random(0.0, 400.0),
+                                                     mzx::Random(0.0, 400.0));
+                    entity->AddComponent<Movement>(destination, 0.001);
                 }
             }
             return true;
