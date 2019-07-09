@@ -3,6 +3,42 @@
 namespace cherry
 {
 
+class NetConnector final
+{
+public:
+    explicit NetConnector(asio::ip::tcp::socket sock);
+    ~NetConnector();
+    NetConnector(const NetConnector &) = delete;
+    NetConnector &operator=(const NetConnector &) = delete;
+
+public:
+    void SendMessage(const char *data, std::size_t size);
+
+private:
+    asio::ip::tcp::socket sock_;
+    uint16_t packet_size_;
+};
+
+NetAcceptor::NetAcceptor(NetManager &net_manager, int port)
+    : net_manager_(net_manager)
+{
+}
+
+NetAcceptor::~NetAcceptor()
+{
+}
+
+void NetAcceptor::DoAccept()
+{
+    acceptor_.async_accept(socket_, [this](std::error error) {
+        if (!error)
+        {
+            net_manager_.Post();
+        }
+        DoAccept();
+    });
+}
+
 NetManager::NetManager()
     : io_service_work_(io_service_)
     , service_thread_(std::bind(&aio::io_service::run, &io_service_))
